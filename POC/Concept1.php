@@ -1,15 +1,13 @@
 <?php
 namespace ORMPOC1;
 
-use Exception;
-
 class Database {
     private static $instance = null;
     private $pdo;
 
     private function __construct() {
         $host = 'localhost';
-        $dbname = 'my_database';
+        $dbname = 'extendorm';
         $username = 'root';
         $password = '';
         $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
@@ -106,6 +104,4 @@ abstract class Model {
         }
     }
 }
-
-
 ?>

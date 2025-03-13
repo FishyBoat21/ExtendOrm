@@ -6,7 +6,7 @@ class Database {
 
     private function __construct() {
         $host = 'localhost';
-        $dbname = 'my_database';
+        $dbname = 'extendorm';
         $username = 'root';
         $password = '';
         $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
@@ -35,12 +35,14 @@ abstract class Model {
     protected $primary_key;
     public $attributes = [];
 
-    // Magic getter: allows property-like access
+    public function __construct($attributes = []) {
+        $this->attributes = $attributes;
+    }
+
     public function __get($name) {
         return $this->attributes[$name] ?? null;
     }
 
-    // Magic setter: allows property-like setting
     public function __set($name, $value) {
         $this->attributes[$name] = $value;
     }
@@ -82,7 +84,7 @@ class ORM{
         if(!class_exists($model)){
             throw new \Exception("Invalid model");
         }
-        if(class_uses($model)[Model::class] === null){
+        if(!isset(class_parents($model)[Model::class])){
             throw new \Exception("Invalid model");
         }
         $conn = Database::getInstance()->getConnection();
