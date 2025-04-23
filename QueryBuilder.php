@@ -4,17 +4,15 @@ enum QueryBuilderOperator:string{
     case Equals = '=';
     case NotEqual = '!=';
     case LessThan = '<';
-    case MoreThen = '>';
-    case LessThenEquals = '<=';
-    case MoreThenEquals = '>=';
+    case MoreThan = '>';
+    case LessThanEquals = '<=';
+    case MoreThanEquals = '>=';
 }
-interface IQueryBuilder{
-    public static function insert(string $table, array $fields, array $values);
-    public static function select(array $fields = ['*'], string $table):Queryable;
-    public static function update(string $table):Set;
-    public static function delete(string $table):Queryable;
+enum QueryBuilderJoinType:string{
+    case Inner = "INNER";
 }
-class QueryBuilder implements IQueryBuilder {
+
+class QueryBuilder {
     public Query $queryObj;
 
     public function __construct(Query $queryObj)
@@ -29,11 +27,11 @@ class QueryBuilder implements IQueryBuilder {
         $queryObj->values = $values;
         return new Queryable($queryObj);
     }
-    public static function select(array $fields = ['*'], string $table):Queryable
+    public static function select(array $fields = ['*'], string $table):Joinable
     {
         $queryObj = new Query();
         $queryObj->query = "SELECT ".implode(', ', $fields)." FROM $table";
-        return new Queryable($queryObj);
+        return new Joinable($queryObj);
     }
     public static function update(string $table):Set
     {
@@ -54,7 +52,7 @@ class Query{
 }
 
 class Set extends QueryBuilder{
-    public function set(array $fields, array $values) {
+    public function set(array $fields, array $values):Queryable {
         $this->queryObj->query .= " SET";
         $placeholders =[];
         foreach($fields as $field){
@@ -65,16 +63,17 @@ class Set extends QueryBuilder{
         return new Queryable($this->queryObj);
     }
 }
+
 class Queryable extends QueryBuilder{
     
-    public function where(string $field, QueryBuilderOperator $operator, $value) {
-        $this->queryObj->query .= (strpos($this->queryObj->query, 'WHERE') === false) ? " WHERE $field $operator->value ?" : " AND $field $operator ?";
+    public function where(string $field, QueryBuilderOperator $operator, $value):self {
+        $this->queryObj->query .= (strpos($this->queryObj->query, 'WHERE') === false) ? " WHERE $field $operator->value ?" : " AND $field $operator->value ?";
         $this->queryObj->values[] = $value;
         return $this;
     }
 
-    public function orWhere(string $field, QueryBuilderOperator $operator, $value) {
-        $this->queryObj->query .= " OR $field $operator ?";
+    public function orWhere(string $field, QueryBuilderOperator $operator, $value):self {
+        $this->queryObj->query .= " OR $field $operator->value ?";
         $this->queryObj->values[] = $value;
         return $this;
     }
@@ -83,6 +82,13 @@ class Queryable extends QueryBuilder{
         $stmt = $conn->prepare($this->queryObj->query);
         $stmt->execute($this->queryObj->values);
         return $stmt;
+    }
+}
+
+class Joinable extends Queryable{
+    public function join(string $table, string $localColumn, QueryBuilderOperator $operator, string $foreignColumn, QueryBuilderJoinType $joinType = QueryBuilderJoinType::Inner): self {
+        $this->queryObj->query .= " $joinType->value JOIN $table ON $localColumn $operator->value $foreignColumn";
+        return $this;
     }
 }
 ?>

@@ -38,7 +38,8 @@ class Database {
 abstract class Model {
     protected $table;
     protected $primaryKey;
-    protected array $fields;
+    protected array $fieldPropMap;
+    protected array $relationMap;
     public function __construct($index = null) {
         $this->table = static::getTableName();
         $refClass = new ReflectionClass($this);
@@ -52,7 +53,10 @@ abstract class Model {
                 }
                 if($attribute->getName() == Column::class){
                     $field = $attribute->getArguments()[0];
-                    $this->fields[] = $field;
+                    $this->fieldPropMap[$field] = $prop->getName();
+                }
+                if($attribute->getName() == Relation::class){
+                    $this->relationMap[$prop->getName()] = $attribute->newInstance();
                 }
             }
         }
@@ -62,13 +66,12 @@ abstract class Model {
         }
 
         if($index != null){
-            $result = QueryBuilder::select($this->fields,$this->table)
-            ->where($this->primaryKey,QueryBuilderOperator::Equals,$index)
-            ->query()->fetch(\PDO::FETCH_NUM);
-            
-            for ($i=0; $i < count($this->fields); $i++) {
-                $prop = $this->fields[$i];
-                $this->$prop = $result[$i];
+            $results = QueryBuilder::select(array_keys($this->fieldPropMap),$this->table)
+            ->where(array_search($this->primaryKey,$this->fieldPropMap),QueryBuilderOperator::Equals,$index)
+            ->query()->fetch(\PDO::FETCH_ASSOC);
+            foreach($results as $key=>$value){
+                $prop = $this->fieldPropMap[$key];
+                $this->$prop = $value;
             }
         }
     }
@@ -85,8 +88,8 @@ abstract class Model {
     }
     protected function getValues():array{
         $values = [];
-        foreach($this->fields as $field){
-            $values[] = $this->$field;
+        foreach(array_values($this->fieldPropMap) as $prop){
+            $values[] = $this->$prop;
         }
         return $values;
     }
@@ -111,12 +114,14 @@ abstract class Model {
         $primaryKey = $this->primaryKey;
         if ($this->$primaryKey != null) {
             QueryBuilder::update($this->getTableName())
-            ->set($this->fields,$values)
+            ->set(array_keys($this->fieldPropMap),$values)
             ->where($this->primaryKey,QueryBuilderOperator::Equals,$this->$primaryKey)
             ->query();
             return $this;
         } else {
-            $result = QueryBuilder::insert(static::getTableName(),$this->fields,$values)->query();
+            $field = array_keys($this->fieldPropMap);
+            unset($field[$this->getPrimaryKey()]);
+            $result = QueryBuilder::insert(static::getTableName(),$field,$values)->query();
             if ($result) {
                 $this->$primaryKey = $conn->lastInsertId();
             }
@@ -133,6 +138,16 @@ abstract class Model {
         ->where($this->primaryKey,QueryBuilderOperator::Equals,$this->$primaryKey)->query();
         if ($result) {
             $this->$primaryKey = null;
+        }
+    }
+
+    public function __get($name)
+    {
+        if(isset($this->relationMap[str_replace("Obj","Id",$name)])){
+            $prop = str_replace("Obj","Id",$name);
+            $relationObj = $this->relationMap[$prop];
+            $model = $relationObj->targetModel;
+            return new $model($this->$prop);
         }
     }
 }
