@@ -1,6 +1,7 @@
 <?php
 namespace ExtendORM;
 
+use PDO;
 use ReflectionClass;
 use ReflectionProperty;
 
@@ -56,7 +57,9 @@ abstract class Model {
                     $this->fieldPropMap[$field] = $prop->getName();
                 }
                 if($attribute->getName() == Relation::class){
-                    $this->relationMap[$prop->getName()] = $attribute->newInstance();
+                    $targetModel = $attribute->getArguments()[0];
+                    $alias = $attribute->getArguments()[1];
+                    $this->relationMap[$alias] = ["targetModel"=>$targetModel,"prop"=>$prop->getName()];
                 }
             }
         }
@@ -143,12 +146,66 @@ abstract class Model {
 
     public function __get($name)
     {
-        if(isset($this->relationMap[str_replace("Obj","Id",$name)])){
-            $prop = str_replace("Obj","Id",$name);
-            $relationObj = $this->relationMap[$prop];
-            $model = $relationObj->targetModel;
+        if(isset($this->relationMap[$name])){
+            $relation = $this->relationMap[$name];
+            $model = $relation["targetModel"];
+            $prop = $relation["prop"];
             return new $model($this->$prop);
         }
+    }
+    public static function findMany($propForSearch,QueryBuilderOperator $operator,$value):array{
+        $tableName = static::getTableName();
+        $fieldPropMap = array();
+        $refClass = new ReflectionClass(static::class);
+        $props = $refClass->getProperties();        
+        foreach($props as $prop){
+            $refProp = new ReflectionProperty(static::class,$prop->getName());
+            $attributes = $refProp->getAttributes();
+            foreach ($attributes as $attribute) {
+                if($attribute->getName() == Column::class){
+                    $field = $attribute->getArguments()[0];
+                    $fieldPropMap[$field] = $prop->getName();
+                }
+            }
+        }
+        $fieldForSearch = array_search($propForSearch,$fieldPropMap);
+        $results = QueryBuilder::select(array_keys($fieldPropMap),$tableName)->where($fieldForSearch,$operator,$value)->query()->fetchAll(\PDO::FETCH_ASSOC);
+        $resultObj = array();
+        foreach($results as $result){
+            $modelType = static::class;
+            $model = new $modelType();
+            foreach($result as $key=>$value){
+                $prop = $fieldPropMap[$key];
+                $model->$prop = $value;
+            }
+            $resultObj[] = $model;
+        }
+        return $resultObj;
+    }
+    public static function findOne($propForSearch,QueryBuilderOperator $operator,$value):static{
+        $tableName = static::getTableName();
+        $fieldPropMap = array();
+        $refClass = new ReflectionClass(static::class);
+        $props = $refClass->getProperties();        
+        foreach($props as $prop){
+            $refProp = new ReflectionProperty(static::class,$prop->getName());
+            $attributes = $refProp->getAttributes();
+            foreach ($attributes as $attribute) {
+                if($attribute->getName() == Column::class){
+                    $field = $attribute->getArguments()[0];
+                    $fieldPropMap[$field] = $prop->getName();
+                }
+            }
+        }
+        $fieldForSearch = array_search($propForSearch,$fieldPropMap);
+        $result = QueryBuilder::select(array_keys($fieldPropMap),$tableName)->where($fieldForSearch,$operator,$value)->query()->fetch(\PDO::FETCH_ASSOC);
+        $modelType = static::class;
+        $model = new $modelType();
+        foreach($result as $key=>$value){
+            $prop = $fieldPropMap[$key];
+            $model->$prop = $value;
+        }
+        return $model;
     }
 }
 ?>
