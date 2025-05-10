@@ -105,10 +105,11 @@ abstract class Model {
         $conn = Database::getInstance()->getConnection();
         $values = $this->getValues();
         $primaryKey = $this->primaryKey;
+        $primaryKeyField = array_search($primaryKey,$this->fieldPropMap);
         if ($this->$primaryKey != null) {
             QueryBuilder::update($this->getTableName())
             ->set(array_keys($this->fieldPropMap),$values)
-            ->where($this->primaryKey,QueryBuilderOperator::Equals,$this->$primaryKey)
+            ->where($primaryKeyField,QueryBuilderOperator::Equals,$this->$primaryKey)
             ->query();
             return $this;
         } else {
@@ -172,7 +173,7 @@ abstract class Model {
         }
         return $resultObj;
     }
-    public static function findOne($propForSearch,QueryBuilderOperator $operator,$value):static{
+    public static function findOne($propForSearch,QueryBuilderOperator $operator,$value):?static{
         $tableName = static::getTableName();
         $fieldPropMap = array();
         $refClass = new ReflectionClass(static::class);
@@ -189,6 +190,9 @@ abstract class Model {
         }
         $fieldForSearch = array_search($propForSearch,$fieldPropMap);
         $result = QueryBuilder::select(array_keys($fieldPropMap),$tableName)->where($fieldForSearch,$operator,$value)->query()->fetch(\PDO::FETCH_ASSOC);
+        if(!$result){
+            return null;
+        }
         $modelType = static::class;
         $model = new $modelType();
         foreach($result as $key=>$value){
