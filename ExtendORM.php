@@ -11,7 +11,7 @@ class Database {
 
     private function __construct() {
         $host = 'localhost';
-        $dbname = 'extendorm';
+        $dbname = 'lapakkecil';
         $username = 'root';
         $password = '';
         $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
@@ -41,7 +41,7 @@ abstract class Model {
     protected $primaryKey;
     protected array $fieldPropMap;
     protected array $relationMap;
-    public function __construct($index = null) {
+    public function __construct() {
         $this->table = static::getTableName();
         $refClass = new ReflectionClass($this);
         $props = $refClass->getProperties();        
@@ -66,16 +66,6 @@ abstract class Model {
 
         if($this->primaryKey == null){
             throw new ExtendORMException("Primary key not set");
-        }
-
-        if($index != null){
-            $results = QueryBuilder::select(array_keys($this->fieldPropMap),$this->table)
-            ->where(array_search($this->primaryKey,$this->fieldPropMap),QueryBuilderOperator::Equals,$index)
-            ->query()->fetch(\PDO::FETCH_ASSOC);
-            foreach($results as $key=>$value){
-                $prop = $this->fieldPropMap[$key];
-                $this->$prop = $value;
-            }
         }
     }
     
