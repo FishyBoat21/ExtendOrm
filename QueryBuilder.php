@@ -7,6 +7,8 @@ enum QueryBuilderOperator:string{
     case MoreThan = '>';
     case LessThanEquals = '<=';
     case MoreThanEquals = '>=';
+    case Like = 'LIKE';
+    case NotLike = 'NOT LIKE';
 }
 enum QueryBuilderJoinType:string{
     case Inner = "INNER";
