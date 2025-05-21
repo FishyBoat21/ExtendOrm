@@ -1,0 +1,15 @@
+{
+    "name": "kevin1358/extend-orm",
+    "description": "Simple Lightweight CRUD ORM",
+    "autoload": {
+        "psr-4": {
+            "Kevin1358\\ExtendOrm\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Simple Lightweight CRUD ORM"
+        }
+    ],
+    "require": {}
+}
