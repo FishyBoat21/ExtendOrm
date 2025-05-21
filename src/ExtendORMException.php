@@ -1,5 +1,5 @@
 <?php
-namespace ExtendORM;
+namespace Kevin1358\ExtendOrm;
 
 use Exception;
 
