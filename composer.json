@@ -1,5 +1,5 @@
 {
-    "name": "kevin1358/extend-orm",
+    "name": "kevin1358/extendorm",
     "description": "Simple Lightweight CRUD ORM",
     "autoload": {
         "psr-4": {
@@ -11,5 +11,6 @@
             "name": "Simple Lightweight CRUD ORM"
         }
     ],
-    "require": {}
+    "require": {},
+    "license": "GPL-3.0-or-later"
 }
