@@ -1,6 +1,12 @@
 <?php
 namespace Kevin1358\ExtendOrm;
 
+use Kevin1358\ExtendOrm\Attribute\Column;
+use Kevin1358\ExtendOrm\Attribute\PrimaryKey;
+use Kevin1358\ExtendOrm\Attribute\Relation;
+use Kevin1358\ExtendOrm\Attribute\Table;
+use Kevin1358\ExtendOrm\QueryBuilder\QueryBuilder;
+use Kevin1358\ExtendOrm\QueryBuilder\QueryBuilderOperator;
 use PDO;
 use ReflectionClass;
 use ReflectionProperty;
