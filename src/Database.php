@@ -7,28 +7,16 @@ class Database {
     private static $instance = null;
     private $pdo;
 
-    private function __construct() {
-        $host = 'localhost';
-        $dbname = 'lapakkecil';
-        $username = 'root';
-        $password = '';
-        $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
-
-        try {
-            $this->pdo = new \PDO($dsn, $username, $password);
-            $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        } catch (\PDOException $e) {
-            die("Connection failed: " . $e->getMessage());
-        }
+    private function __construct(PDO $connection) {
+        $this->pdo = $connection;
     }
 
     public static function getInstance() {
-        if (!self::$instance) {
-            self::$instance = new Database();
-        }
         return self::$instance;
     }
-
+    public static function boot(PDO $connection){
+        self::$instance = new Database($connection);
+    }
     public function getConnection() {
         return $this->pdo;
     }
