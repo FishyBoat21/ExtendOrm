@@ -104,7 +104,7 @@ abstract class Model {
             throw new ExtendORMException("Not a valid record");
         }
         $result = QueryBuilder::delete(static::getTableName())
-        ->where($this->primaryKey,QueryBuilderOperator::Equals,$this->$primaryKey)->query();
+        ->where(array_search($this->primaryKey,$this->fieldPropMap),QueryBuilderOperator::Equals,$this->$primaryKey)->query();
         if ($result) {
             $this->$primaryKey = null;
         }
