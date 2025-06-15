@@ -10,5 +10,6 @@ enum QueryBuilderOperator:string{
     case MoreThanEquals = '>=';
     case Like = 'LIKE';
     case NotLike = 'NOT LIKE';
+    case Is = 'IS';
 }
 ?>
