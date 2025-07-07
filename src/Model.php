@@ -121,7 +121,10 @@ abstract class Model {
             return $model::findOne(QueryBuilderOperator::Equals,$this->$prop);
         }
     }
-    public static function findMany(QueryBuilderOperator $operator,$value,string $propForSearch):array{
+    public static function findMany(QueryBuilderOperator $operator = QueryBuilderOperator::NotEqual,$value = 0,?string $propForSearch = null):array{
+        if ($propForSearch == null){
+            $propForSearch = static::getPrimaryKey();
+        }
         $tableName = static::getTableName();
         $fieldPropMap = array();
         $refClass = new ReflectionClass(static::class);
