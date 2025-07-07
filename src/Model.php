@@ -62,18 +62,20 @@ abstract class Model {
         return $values;
     }
     
-    protected static function getPrimaryKey(){
+    protected static function getPrimaryKey():string{
         $refClass = new ReflectionClass(static::class);
-        $props = $refClass->getProperties();        
+        $props = $refClass->getProperties();   
+        $primaryKey = "";     
         foreach($props as $prop){
             $refProp = new ReflectionProperty(static::class,$prop->getName());
             $attributes = $refProp->getAttributes();
             foreach ($attributes as $attribute) {
                 if($attribute->getName() == PrimaryKey::class){
-                    return $prop->getName();
+                    $primaryKey = $prop->getName();
                 }
             }
         }
+        return $primaryKey;
     }
 
     public function save() {
@@ -116,10 +118,10 @@ abstract class Model {
             $relation = $this->relationMap[$name];
             $model = $relation["targetModel"];
             $prop = $relation["prop"];
-            return new $model($this->$prop);
+            return $model::findOne(QueryBuilderOperator::Equals,$this->$prop);
         }
     }
-    public static function findMany($propForSearch,QueryBuilderOperator $operator,$value):array{
+    public static function findMany(QueryBuilderOperator $operator,$value,string $propForSearch):array{
         $tableName = static::getTableName();
         $fieldPropMap = array();
         $refClass = new ReflectionClass(static::class);
@@ -148,7 +150,10 @@ abstract class Model {
         }
         return $resultObj;
     }
-    public static function findOne($propForSearch,QueryBuilderOperator $operator,$value):?static{
+    public static function findOne(QueryBuilderOperator $operator,$value,?string $propForSearch = null):?static{
+        if ($propForSearch == null){
+            $propForSearch = static::getPrimaryKey();
+        }
         $tableName = static::getTableName();
         $fieldPropMap = array();
         $refClass = new ReflectionClass(static::class);
