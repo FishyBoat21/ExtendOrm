@@ -64,7 +64,7 @@ abstract class Model {
     }
     protected function GetValues():array{
         $values = [];
-        foreach(array_values($this->fieldPropMap) as $prop){
+        foreach(array_values(static::$FieldPropMap) as $prop){
             $values[] = $this->$prop;
         }
         return $values;
@@ -87,21 +87,21 @@ abstract class Model {
     }
 
     public function Save() {
-        $conn = Database::getInstance()->getConnection();
-        $values = $this->getValues();
-        $primaryKey = $this->primaryKey;
-        $primaryKeyField = array_search($primaryKey,$this->fieldPropMap);
+        $values = $this->GetValues();
+        $primaryKey = static::$PrimaryKey;
+        $primaryKeyField = array_search($primaryKey,static::$FieldPropMap);
         if ($this->$primaryKey != null) {
-            QueryBuilder::update($this->getTableName())
-            ->set(array_keys($this->fieldPropMap),$values)
+            QueryBuilder::update(static::GetTableName())
+            ->set(array_keys(static::$FieldPropMap),$values)
             ->where($primaryKeyField,QueryBuilderOperator::Equals,$this->$primaryKey)
             ->query();
             return $this;
         } else {
-            $field = array_keys($this->fieldPropMap);
-            unset($field[$this->getPrimaryKey()]);
-            $result = QueryBuilder::insert(static::getTableName(),$field,$values)->query();
+            $field = array_keys(static::$FieldPropMap);
+            unset($field[static::GetPrimaryKey()]);
+            $result = QueryBuilder::insert(static::GetTableName(),$field,$values)->query();
             if ($result) {
+                $conn = Database::getInstance()->getConnection();
                 $this->$primaryKey = $conn->lastInsertId();
             }
             return $this;
@@ -109,12 +109,12 @@ abstract class Model {
     }
 
     public function Delete():void {
-        $primaryKey = $this->primaryKey;
+        $primaryKey = static::$PrimaryKey;
         if ($primaryKey == null) {
             throw new ExtendORMException("Not a valid record");
         }
-        $result = QueryBuilder::delete(static::getTableName())
-        ->where(array_search($this->primaryKey,$this->fieldPropMap),QueryBuilderOperator::Equals,$this->$primaryKey)->query();
+        $result = QueryBuilder::delete(static::GetTableName())
+        ->where(array_search(static::$PrimaryKey,static::$FieldPropMap),QueryBuilderOperator::Equals,$this->$primaryKey)->query();
         if ($result) {
             $this->$primaryKey = null;
         }
