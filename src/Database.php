@@ -11,13 +11,13 @@ class Database {
         $this->pdo = $connection;
     }
 
-    public static function getInstance():Database{
-        return self::$instance;
+    public static function GetInstance():Database{
+        return static::$instance;
     }
-    public static function boot(PDO $connection){
-        self::$instance = new Database($connection);
+    public static function Boot(PDO $connection){
+        static::$instance = new Database($connection);
     }
-    public function getConnection():PDO {
+    public function GetConnection():PDO {
         return $this->pdo;
     }
 }
