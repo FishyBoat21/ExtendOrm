@@ -1,5 +1,5 @@
 <?php
-namespace Kevin1358\ExtendOrm\Attribute;
+namespace FishyBoat21\ExtendOrm\Attribute;
 use Attribute;
 
 #[Attribute()]

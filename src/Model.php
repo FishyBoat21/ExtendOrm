@@ -1,12 +1,12 @@
 <?php
-namespace Kevin1358\ExtendOrm;
+namespace FishyBoat21\ExtendOrm;
 
-use Kevin1358\ExtendOrm\Attribute\Column;
-use Kevin1358\ExtendOrm\Attribute\PrimaryKey;
-use Kevin1358\ExtendOrm\Attribute\Relation;
-use Kevin1358\ExtendOrm\Attribute\Table;
-use Kevin1358\ExtendOrm\QueryBuilder\QueryBuilder;
-use Kevin1358\ExtendOrm\QueryBuilder\QueryBuilderOperator;
+use FishyBoat21\ExtendOrm\Attribute\Column;
+use FishyBoat21\ExtendOrm\Attribute\PrimaryKey;
+use FishyBoat21\ExtendOrm\Attribute\Relation;
+use FishyBoat21\ExtendOrm\Attribute\Table;
+use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilder;
+use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilderOperator;
 use PDO;
 use ReflectionClass;
 use ReflectionProperty;

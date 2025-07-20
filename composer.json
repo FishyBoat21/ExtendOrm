@@ -1,9 +1,9 @@
 {
-    "name": "kevin1358/extendorm",
+    "name": "fishyboat21/extendorm",
     "description": "Simple Lightweight CRUD ORM",
     "autoload": {
         "psr-4": {
-            "Kevin1358\\ExtendOrm\\": "src/"
+            "FishyBoat21\\ExtendOrm\\": "src/"
         }
     },
     "authors": [

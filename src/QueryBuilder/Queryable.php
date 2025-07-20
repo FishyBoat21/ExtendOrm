@@ -1,9 +1,9 @@
 <?php
-namespace Kevin1358\ExtendOrm\QueryBuilder;
+namespace FishyBoat21\ExtendOrm\QueryBuilder;
 
-use Kevin1358\ExtendOrm\QueryBuilder\QueryBuilder;
-use Kevin1358\ExtendOrm\Database;
-use Kevin1358\ExtendOrm\QueryBuilder\QueryBuilderOperator;
+use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilder;
+use FishyBoat21\ExtendOrm\Database;
+use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilderOperator;
 
 class Queryable extends QueryBuilder{
     

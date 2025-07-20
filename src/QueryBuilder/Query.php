@@ -1,5 +1,5 @@
 <?php
-namespace Kevin1358\ExtendOrm\QueryBuilder;
+namespace FishyBoat21\ExtendOrm\QueryBuilder;
 
 class Query{
     public string $query;

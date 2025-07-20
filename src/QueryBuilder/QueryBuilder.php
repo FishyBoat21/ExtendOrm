@@ -1,9 +1,9 @@
 <?php
-namespace Kevin1358\ExtendOrm\QueryBuilder;
-use Kevin1358\ExtendOrm\QueryBuilder\Query;
-use Kevin1358\ExtendOrm\QueryBuilder\Joinable;
-use Kevin1358\ExtendOrm\QueryBuilder\Set;
-use Kevin1358\ExtendOrm\QueryBuilder\Queryable;
+namespace FishyBoat21\ExtendOrm\QueryBuilder;
+use FishyBoat21\ExtendOrm\QueryBuilder\Query;
+use FishyBoat21\ExtendOrm\QueryBuilder\Joinable;
+use FishyBoat21\ExtendOrm\QueryBuilder\Set;
+use FishyBoat21\ExtendOrm\QueryBuilder\Queryable;
 
 class QueryBuilder {
     public Query $queryObj;
