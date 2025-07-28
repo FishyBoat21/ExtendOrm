@@ -13,7 +13,7 @@ use ReflectionProperty;
 
 abstract class Model {
     protected static $Table;
-    protected static array $ModelMap;
+    protected static array $ModelMap = array();
     protected static bool $IsInitialize = false;
     public function __construct() {
         if(isset(static::$ModelMap[static::class])) {
