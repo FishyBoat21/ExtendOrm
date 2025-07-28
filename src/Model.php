@@ -16,7 +16,7 @@ abstract class Model {
     protected static array $ModelMap = array();
     protected static bool $IsInitialize = false;
     public function __construct() {
-        if(isset(static::$ModelMap[static::class])) {
+        if(!isset(static::$ModelMap[static::class])) {
             static::Initialize();
         }
     }
