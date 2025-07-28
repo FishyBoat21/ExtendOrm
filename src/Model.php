@@ -13,16 +13,15 @@ use ReflectionProperty;
 
 abstract class Model {
     protected static $Table;
-    protected static $PrimaryKey;
-    protected static array $FieldPropMap;
-    protected static array $RelationMap;
+    protected static array $ModelMap;
     protected static bool $IsInitialize = false;
     public function __construct() {
-        if(!static::$IsInitialize) {
+        if(isset(static::$ModelMap[static::class])) {
             static::Initialize();
         }
     }
     protected static function Initialize():void {
+        static::$ModelMap[static::class] = new ModelMap();
         static::$Table = static::getTableName();
         $refClass = new ReflectionClass(static::class);
         $props = $refClass->getProperties();        
@@ -30,22 +29,22 @@ abstract class Model {
             $refProp = new ReflectionProperty(static::class,$prop->getName());
             $attributes = $refProp->getAttributes();
             foreach ($attributes as $attribute) {
-                if($attribute->getName() == PrimaryKey::class && static::$PrimaryKey == null){
-                    static::$PrimaryKey = $prop->getName();
+                if($attribute->getName() == PrimaryKey::class && static::$ModelMap[static::class]->PrimaryKey == null){
+                    static::$ModelMap[static::class]->PrimaryKey = $prop->getName();
                 }
                 if($attribute->getName() == Column::class){
                     $field = $attribute->getArguments()[0];
-                    static::$FieldPropMap[$field] = $prop->getName();
+                    static::$ModelMap[static::class]->FieldPropMap[$field] = $prop->getName();
                 }
                 if($attribute->getName() == Relation::class){
                     $targetModel = $attribute->getArguments()[0];
                     $alias = $attribute->getArguments()[1];
-                    static::$RelationMap[$alias] = ["targetModel"=>$targetModel,"prop"=>$prop->getName()];
+                    static::$ModelMap[static::class]->RelationMap[$alias] = ["targetModel"=>$targetModel,"prop"=>$prop->getName()];
                 }
             }
         }
 
-        if(static::$PrimaryKey == null){
+        if(static::$ModelMap[static::class]->PrimaryKey == null){
             throw new ExtendORMException("Primary key not set");
         }
 
@@ -64,7 +63,7 @@ abstract class Model {
     }
     protected function GetValues():array{
         $values = [];
-        foreach(array_values(static::$FieldPropMap) as $prop){
+        foreach(array_values(static::$ModelMap[static::class]->FieldPropMap) as $prop){
             $values[] = $this->$prop;
         }
         return $values;
@@ -88,16 +87,16 @@ abstract class Model {
 
     public function Save() {
         $values = $this->GetValues();
-        $primaryKey = static::$PrimaryKey;
-        $primaryKeyField = array_search($primaryKey,static::$FieldPropMap);
+        $primaryKey = static::$ModelMap[static::class]->PrimaryKey;
+        $primaryKeyField = array_search($primaryKey,static::$ModelMap[static::class]->FieldPropMap);
         if ($this->$primaryKey != null) {
             QueryBuilder::update(static::GetTableName())
-            ->set(array_keys(static::$FieldPropMap),$values)
+            ->set(array_keys(static::$ModelMap[static::class]->FieldPropMap),$values)
             ->where($primaryKeyField,QueryBuilderOperator::Equals,$this->$primaryKey)
             ->query();
             return $this;
         } else {
-            $field = array_keys(static::$FieldPropMap);
+            $field = array_keys(static::$ModelMap[static::class]->FieldPropMap);
             unset($field[static::GetPrimaryKey()]);
             $result = QueryBuilder::insert(static::GetTableName(),$field,$values)->query();
             if ($result) {
@@ -109,12 +108,12 @@ abstract class Model {
     }
 
     public function Delete():void {
-        $primaryKey = static::$PrimaryKey;
+        $primaryKey = static::$ModelMap[static::class]->PrimaryKey;
         if ($primaryKey == null) {
             throw new ExtendORMException("Not a valid record");
         }
         $result = QueryBuilder::delete(static::GetTableName())
-        ->where(array_search(static::$PrimaryKey,static::$FieldPropMap),QueryBuilderOperator::Equals,$this->$primaryKey)->query();
+        ->where(array_search(static::$ModelMap[static::class]->PrimaryKey,static::$ModelMap[static::class]->FieldPropMap),QueryBuilderOperator::Equals,$this->$primaryKey)->query();
         if ($result) {
             $this->$primaryKey = null;
         }
@@ -135,14 +134,14 @@ abstract class Model {
         }
         $tableName = static::getTableName();
         static::Initialize();
-        $fieldForSearch = array_search($propForSearch,static::$FieldPropMap);
-        $results = QueryBuilder::select(array_keys(static::$FieldPropMap),$tableName)->where($fieldForSearch,$operator,$value)->query()->fetchAll(\PDO::FETCH_ASSOC);
+        $fieldForSearch = array_search($propForSearch,static::$ModelMap[static::class]->FieldPropMap);
+        $results = QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName)->where($fieldForSearch,$operator,$value)->query()->fetchAll(\PDO::FETCH_ASSOC);
         $resultObj = array();
         foreach($results as $result){
             $modelType = static::class;
             $model = new $modelType();
             foreach($result as $key=>$value){
-                $prop = static::$FieldPropMap[$key];
+                $prop = static::$ModelMap[static::class]->FieldPropMap[$key];
                 $model->$prop = $value;
             }
             $resultObj[] = $model;
@@ -155,15 +154,15 @@ abstract class Model {
         }
         $tableName = static::getTableName();
         static::Initialize();
-        $fieldForSearch = array_search($propForSearch,static::$FieldPropMap);
-        $result = QueryBuilder::select(array_keys(static::$FieldPropMap),$tableName)->where($fieldForSearch,$operator,$value)->query()->fetch(\PDO::FETCH_ASSOC);
+        $fieldForSearch = array_search($propForSearch,static::$ModelMap[static::class]->FieldPropMap);
+        $result = QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName)->where($fieldForSearch,$operator,$value)->query()->fetch(\PDO::FETCH_ASSOC);
         if(!$result){
             return null;
         }
         $modelType = static::class;
         $model = new $modelType();
         foreach($result as $key=>$value){
-            $prop = static::$FieldPropMap[$key];
+            $prop = static::$ModelMap[static::class]->FieldPropMap[$key];
             $model->$prop = $value;
         }
         return $model;
