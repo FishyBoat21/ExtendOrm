@@ -3,7 +3,6 @@ namespace FishyBoat21\ExtendOrm\QueryBuilder;
 
 use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilder;
 use FishyBoat21\ExtendOrm\Database;
-use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilderOperator;
 use PDOStatement;
 
 class Queryable extends QueryBuilder{
@@ -21,8 +20,8 @@ class Queryable extends QueryBuilder{
         foreach($this->queryObj as $block){
             if($block == null) continue;
             $queryString .= $block->query;
-            $values += $block->values;  
-        } 
+            $values = array_merge($values, $block->values);  
+        }
         $stmt = $conn->prepare($queryString);
         $stmt->execute($values);
         return $stmt;
