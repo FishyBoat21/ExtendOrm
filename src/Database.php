@@ -2,6 +2,7 @@
 namespace FishyBoat21\ExtendOrm;
 
 use PDO;
+use Throwable;
 
 class Database {
     protected static $instance = null;
@@ -19,6 +20,15 @@ class Database {
     }
     public function GetConnection():PDO {
         return $this->pdo;
+    }
+    public function Transaction($function){
+        try {
+            $this->pdo->beginTransaction();
+            $function($this->pdo);
+            $this->pdo->commit();
+        } catch (Throwable) {
+            $this->pdo->rollBack();
+        }
     }
 }
 ?>
