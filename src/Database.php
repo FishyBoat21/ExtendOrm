@@ -4,8 +4,8 @@ namespace FishyBoat21\ExtendOrm;
 use PDO;
 
 class Database {
-    private static $instance = null;
-    private $pdo;
+    protected static $instance = null;
+    protected $pdo;
 
     private function __construct(PDO $connection) {
         $this->pdo = $connection;
