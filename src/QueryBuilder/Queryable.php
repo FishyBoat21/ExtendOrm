@@ -4,24 +4,27 @@ namespace FishyBoat21\ExtendOrm\QueryBuilder;
 use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilder;
 use FishyBoat21\ExtendOrm\Database;
 use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilderOperator;
+use PDOStatement;
 
 class Queryable extends QueryBuilder{
-    
-    public function where(string $field, QueryBuilderOperator $operator, $value):self {
-        $this->queryObj->query .= (strpos($this->queryObj->query, 'WHERE') === false) ? " WHERE $field $operator->value ?" : " AND $field $operator->value ?";
-        $this->queryObj->values[] = $value;
+    public function limit(int $limit, int $offset):self{
+        $queryBlock = new Block();
+        $queryBlock->query = "LIMIT ?,?";
+        $queryBlock->values = [$offset,$limit];
+        $this->queryObj->blockE = $queryBlock;
         return $this;
     }
-
-    public function orWhere(string $field, QueryBuilderOperator $operator, $value):self {
-        $this->queryObj->query .= " OR $field $operator->value ?";
-        $this->queryObj->values[] = $value;
-        return $this;
-    }
-    public function query(){
+    public function query():PDOStatement{
         $conn = Database::getInstance()->getConnection();
-        $stmt = $conn->prepare($this->queryObj->query);
-        $stmt->execute($this->queryObj->values);
+        $queryString = "";
+        $values = [];
+        foreach($this->queryObj as $block){
+            if($block == null) continue;
+            $queryString .= $block->query;
+            $values += $block->values;  
+        } 
+        $stmt = $conn->prepare($queryString);
+        $stmt->execute($values);
         return $stmt;
     }
 }

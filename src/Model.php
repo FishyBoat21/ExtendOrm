@@ -167,5 +167,29 @@ abstract class Model {
         }
         return $model;
     }
+    public static function Paging(int $limit,int $offset,QueryBuilderOperator $operator = QueryBuilderOperator::NotEqual,$value = 0,?string $propForSearch = null):array{
+        if ($propForSearch == null){
+            $propForSearch = static::GetPrimaryKey();
+        }
+        $tableName = static::getTableName();
+        static::Initialize();
+        $fieldForSearch = array_search($propForSearch,static::$ModelMap[static::class]->FieldPropMap);
+        $results = 
+        QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName)
+        ->where($fieldForSearch,$operator,$value)
+        ->limit($limit,$offset)
+        ->query()->fetchAll(\PDO::FETCH_ASSOC);
+        $resultObj = array();
+        foreach($results as $result){
+            $modelType = static::class;
+            $model = new $modelType();
+            foreach($result as $key=>$value){
+                $prop = static::$ModelMap[static::class]->FieldPropMap[$key];
+                $model->$prop = $value;
+            }
+            $resultObj[] = $model;
+        }
+        return $resultObj;
+    }
 }
 ?>
