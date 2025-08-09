@@ -6,7 +6,7 @@ use Throwable;
 
 class Database {
     protected static $instance = null;
-    protected $pdo;
+    protected PDO $pdo;
 
     private function __construct(PDO $connection) {
         $this->pdo = $connection;
@@ -26,8 +26,9 @@ class Database {
             $this->pdo->beginTransaction();
             $function($this->pdo);
             $this->pdo->commit();
-        } catch (Throwable) {
+        } catch (Throwable $th) {
             $this->pdo->rollBack();
+            throw $th;
         }
     }
 }
