@@ -143,12 +143,13 @@ abstract class Model {
             if($type === Relation::$HasMany){
                 // e.g. User hasMany Posts: User.id = Post.user_id
                 $localValue = $this->$localKey;
-                return $target::FindMany(QueryBuilderOperator::Equals, $localValue, $foreignKey);
+                return $target::FindMany(new Criteria()->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)));
             }
             if($type ===  Relation::$BelongsTo){
                 // e.g. Post belongsTo User: Post.user_id = User.id
                 $foreignValue = $this->$foreignKey;
-                return $target::FindOne(QueryBuilderOperator::Equals, $foreignValue, $ownerKey);
+                return $target::FindOne(new Criteria()->Add(new Criterion($ownerKey,QueryBuilderOperator::Equals,$foreignValue)));
+
             }
         }
     }
