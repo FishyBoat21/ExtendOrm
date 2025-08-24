@@ -152,14 +152,15 @@ abstract class Model {
             }
         }
     }
-    public static function FindMany(QueryBuilderOperator $operator = QueryBuilderOperator::NotEqual,$value = 0,?string $propForSearch = null):array{
-        if ($propForSearch == null){
-            $propForSearch = static::GetPrimaryKey();
-        }
+    public static function FindMany(Criteria $criteria):array{
         $tableName = static::getTableName();
         static::Initialize();
-        $fieldForSearch = array_search($propForSearch,static::$ModelMap[static::class]->FieldPropMap);
-        $results = QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName)->where($fieldForSearch,$operator,$value)->query()->fetchAll(\PDO::FETCH_ASSOC);
+        $query = QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName);
+        foreach($criteria->Criterion as $criterion){
+            $fieldForSearch = array_search($criterion->Key,static::$ModelMap[static::class]->FieldPropMap);
+            $query = $query->where($fieldForSearch,$criterion->Operator,$criterion->Value);
+        }        
+        $results = $query->query()->fetchAll(\PDO::FETCH_ASSOC);
         $resultObj = array();
         foreach($results as $result){
             $modelType = static::class;
@@ -172,14 +173,15 @@ abstract class Model {
         }
         return $resultObj;
     }
-    public static function FindOne(QueryBuilderOperator $operator,$value,?string $propForSearch = null):?static{
-        if ($propForSearch == null){
-            $propForSearch = static::getPrimaryKey();
-        }
+    public static function FindOne(Criteria $criteria):?static{
         $tableName = static::getTableName();
         static::Initialize();
-        $fieldForSearch = array_search($propForSearch,static::$ModelMap[static::class]->FieldPropMap);
-        $result = QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName)->where($fieldForSearch,$operator,$value)->query()->fetch(\PDO::FETCH_ASSOC);
+        $query = QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName);
+        foreach($criteria->Criterion as $criterion){
+            $fieldForSearch = array_search($criterion->Key,static::$ModelMap[static::class]->FieldPropMap);
+            $query = $query->where($fieldForSearch,$criterion->Operator,$criterion->Value);
+        }
+        $result = $query->query()->fetch(\PDO::FETCH_ASSOC);
         if(!$result){
             return null;
         }
@@ -191,18 +193,15 @@ abstract class Model {
         }
         return $model;
     }
-    public static function Paging(int $limit,int $offset,QueryBuilderOperator $operator = QueryBuilderOperator::NotEqual,$value = 0,?string $propForSearch = null):array{
-        if ($propForSearch == null){
-            $propForSearch = static::GetPrimaryKey();
-        }
+    public static function Paging(int $limit,int $offset,Criteria $criteria):array{
         $tableName = static::getTableName();
         static::Initialize();
-        $fieldForSearch = array_search($propForSearch,static::$ModelMap[static::class]->FieldPropMap);
-        $results = 
-        QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName)
-        ->where($fieldForSearch,$operator,$value)
-        ->limit($limit,$offset)
-        ->query()->fetchAll(\PDO::FETCH_ASSOC);
+        $query = QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName);
+        foreach($criteria->Criterion as $criterion){
+            $fieldForSearch = array_search($criterion->Key,static::$ModelMap[static::class]->FieldPropMap);
+            $query = $query->where($fieldForSearch,$criterion->Operator,$criterion->Value);
+        }
+        $results = $query->limit($limit,$offset)->query()->fetchAll(\PDO::FETCH_ASSOC);
         $resultObj = array();
         foreach($results as $result){
             $modelType = static::class;
