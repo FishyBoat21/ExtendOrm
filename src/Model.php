@@ -37,9 +37,20 @@ abstract class Model {
                     static::$ModelMap[static::class]->FieldPropMap[$field] = $prop->getName();
                 }
                 if($attribute->getName() == Relation::class){
-                    $targetModel = $attribute->getArguments()[0];
-                    $alias = $attribute->getArguments()[1];
-                    static::$ModelMap[static::class]->RelationMap[$alias] = ["targetModel"=>$targetModel,"prop"=>$prop->getName()];
+                    $args = $attribute->getArguments();
+                    // Expecting: type, target, foreignKey, localKey/ownerKey
+                    $type = $args['type'] ?? null;
+                    $target = $args['target'] ?? null;
+                    $foreignKey = $args['foreignKey'] ?? null;
+                    $localKey = $args['localKey'] ?? null;
+                    $ownerKey = $args['ownerKey'] ?? null;
+                    static::$ModelMap[static::class]->RelationMap[$prop->getName()] = [
+                        "type" => $type,
+                        "target" => $target,
+                        "foreignKey" => $foreignKey,
+                        "localKey" => $localKey,
+                        "ownerKey" => $ownerKey
+                    ];
                 }
             }
         }
@@ -121,11 +132,24 @@ abstract class Model {
 
     public function __get($name)
     {
-        if(isset($this->relationMap[$name])){
-            $relation = $this->relationMap[$name];
-            $model = $relation["targetModel"];
-            $prop = $relation["prop"];
-            return $model::findOne(QueryBuilderOperator::Equals,$this->$prop);
+        if(isset(static::$ModelMap[static::class]->RelationMap[$name])){
+            $relation = static::$ModelMap[static::class]->RelationMap[$name];
+            $type = $relation["type"];
+            $target = $relation["target"];
+            $foreignKey = $relation["foreignKey"];
+            $localKey = $relation["localKey"] ?? null;
+            $ownerKey = $relation["ownerKey"] ?? null;
+
+            if($type === Relation::$HasMany){
+                // e.g. User hasMany Posts: User.id = Post.user_id
+                $localValue = $this->$localKey;
+                return $target::FindMany(QueryBuilderOperator::Equals, $localValue, $foreignKey);
+            }
+            if($type ===  Relation::$BelongsTo){
+                // e.g. Post belongsTo User: Post.user_id = User.id
+                $foreignValue = $this->$foreignKey;
+                return $target::FindOne(QueryBuilderOperator::Equals, $foreignValue, $ownerKey);
+            }
         }
     }
     public static function FindMany(QueryBuilderOperator $operator = QueryBuilderOperator::NotEqual,$value = 0,?string $propForSearch = null):array{
