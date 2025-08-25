@@ -22,7 +22,6 @@ class Queryable extends QueryBuilder{
             $queryString .= $block->query;
             $values = array_merge($values, $block->values);  
         }
-        echo $queryString;
         $stmt = $conn->prepare($queryString);
         $stmt->execute($values);
         return $stmt;
