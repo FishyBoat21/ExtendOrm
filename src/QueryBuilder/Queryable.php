@@ -8,8 +8,8 @@ use PDOStatement;
 class Queryable extends QueryBuilder{
     public function limit(int $limit, int $offset):self{
         $queryBlock = new Block();
-        $queryBlock->query = "LIMIT ?,?";
-        $queryBlock->values = [$offset,$limit];
+        $queryBlock->query = " LIMIT $offset,$limit";
+        $queryBlock->values = [];
         $this->queryObj->blockE = $queryBlock;
         return $this;
     }
@@ -22,6 +22,7 @@ class Queryable extends QueryBuilder{
             $queryString .= $block->query;
             $values = array_merge($values, $block->values);  
         }
+        echo $queryString;
         $stmt = $conn->prepare($queryString);
         $stmt->execute($values);
         return $stmt;
