@@ -4,6 +4,7 @@ namespace FishyBoat21\ExtendOrm;
 use FishyBoat21\ExtendOrm\Attribute\Column;
 use FishyBoat21\ExtendOrm\Attribute\PrimaryKey;
 use FishyBoat21\ExtendOrm\Attribute\Relation;
+use FishyBoat21\ExtendOrm\Attribute\Relation\RelationType;
 use FishyBoat21\ExtendOrm\Attribute\Table;
 use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilder;
 use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilderOperator;
@@ -140,16 +141,17 @@ abstract class Model {
             $localKey = $relation["localKey"] ?? null;
             $ownerKey = $relation["ownerKey"] ?? null;
 
-            if($type === Relation::$HasMany){
-                // e.g. User hasMany Posts: User.id = Post.user_id
+            if($type === RelationType::HasMany){
                 $localValue = $this->$localKey;
                 return $target::FindMany(new Criteria()->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)));
             }
-            if($type ===  Relation::$BelongsTo){
-                // e.g. Post belongsTo User: Post.user_id = User.id
+            if($type ===  RelationType::BelongsTo){
                 $foreignValue = $this->$foreignKey;
                 return $target::FindOne(new Criteria()->Add(new Criterion($ownerKey,QueryBuilderOperator::Equals,$foreignValue)));
-
+            }
+            if($type === RelationType::HasOne){
+                $localValue = $this->$localKey;
+                return $target::FindOne(new Criteria()->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)));
             }
         }
     }
