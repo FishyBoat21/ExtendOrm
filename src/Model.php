@@ -98,6 +98,9 @@ abstract class Model {
     }
 
     public function Save() {
+        if(!isset(static::$ModelMap[static::class])) {
+            static::Initialize();
+        }
         $values = $this->GetValues();
         $primaryKey = static::$ModelMap[static::class]->PrimaryKey;
         $primaryKeyField = array_search($primaryKey,static::$ModelMap[static::class]->FieldPropMap);
@@ -133,6 +136,9 @@ abstract class Model {
 
     public function __get($name)
     {
+        if(!isset(static::$ModelMap[static::class])) {
+            static::Initialize();
+        }
         if(isset(static::$ModelMap[static::class]->RelationMap[$name])){
             $relation = static::$ModelMap[static::class]->RelationMap[$name];
             $type = $relation["type"];
