@@ -111,12 +111,11 @@ abstract class Model {
             $field = array_keys(static::$ModelMap[static::class]->FieldPropMap);
             unset($field[static::GetPrimaryKey()]);
             $result = QueryBuilder::insert(static::GetTableName(),$field,$values)->query();
-            $primaryKey;
             if ($result) {
                 $conn = Database::getInstance()->getConnection();
-                $primaryKey = $conn->lastInsertId();
+                $this->$primaryKey = $conn->lastInsertId();
             }
-            return static::FindOne(new Criteria()->Add(new Criterion(static::GetPrimaryKey(),QueryBuilderOperator::Equals,$primaryKey)));
+            return $this;
         }
     }
 
