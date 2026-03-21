@@ -6,8 +6,10 @@ use FishyBoat21\ExtendOrm\Attribute\PrimaryKey;
 use FishyBoat21\ExtendOrm\Attribute\Relation;
 use FishyBoat21\ExtendOrm\Attribute\Relation\RelationType;
 use FishyBoat21\ExtendOrm\Attribute\Table;
-use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilder;
-use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilderOperator;
+use FishyBoat21\ExtendOrm\QueryBuilder2\IQueryBuilder2;
+use FishyBoat21\ExtendOrm\QueryBuilder2\QueryBuilder2;
+use FishyBoat21\ExtendOrm\QueryBuilder2\QueryBuilderOperator;
+
 use PDO;
 use ReflectionClass;
 use ReflectionProperty;
@@ -16,10 +18,12 @@ abstract class Model {
     protected static $Table;
     protected static array $ModelMap = array();
     protected static bool $IsInitialize = false;
-    public function __construct() {
+    protected IQueryBuilder2 $QueryBuilder;
+    public function __construct(IQueryBuilder2 $queryBuilder) {
         if(!isset(static::$ModelMap[static::class])) {
             static::Initialize();
         }
+        $this->QueryBuilder=$queryBuilder;
     }
     protected static function Initialize():void {
         static::$ModelMap[static::class] = new ModelMap();
@@ -102,35 +106,43 @@ abstract class Model {
             static::Initialize();
         }
         $values = $this->GetValues();
+        $fields = array_keys(static::$ModelMap[static::class]->FieldPropMap);
+        unset($fields[static::GetPrimaryKey()]);
         $primaryKey = static::$ModelMap[static::class]->PrimaryKey;
         $primaryKeyField = array_search($primaryKey,static::$ModelMap[static::class]->FieldPropMap);
         if ($this->$primaryKey != null) {
-            QueryBuilder::update(static::GetTableName())
-            ->set(array_keys(static::$ModelMap[static::class]->FieldPropMap),$values)
+            $this->QueryBuilder->update(static::GetTableName(),array_combine($fields,$values))
             ->where($primaryKeyField,QueryBuilderOperator::Equals,$this->$primaryKey)
-            ->query();
+            ->exec();
             return $this;
         } else {
-            $field = array_keys(static::$ModelMap[static::class]->FieldPropMap);
-            unset($field[static::GetPrimaryKey()]);
-            $result = QueryBuilder::insert(static::GetTableName(),$field,$values)->query();
-            if ($result) {
-                $conn = Database::getInstance()->getConnection();
-                $this->$primaryKey = $conn->lastInsertId();
-            }
+            $this->$primaryKey = $this->QueryBuilder
+            ->insert(static::GetTableName(),array_combine($fields,$values));
             return $this;
         }
     }
 
     public function Delete():void {
         $primaryKey = static::$ModelMap[static::class]->PrimaryKey;
+
         if ($primaryKey == null) {
             throw new ExtendORMException("Not a valid record");
         }
-        $result = QueryBuilder::delete(static::GetTableName())
-        ->where(array_search(static::$ModelMap[static::class]->PrimaryKey,static::$ModelMap[static::class]->FieldPropMap),QueryBuilderOperator::Equals,$this->$primaryKey)->query();
-        if ($result) {
+
+        // $result = QueryBuilder::delete(static::GetTableName())
+        // ->where(array_search(static::$ModelMap[static::class]->PrimaryKey,static::$ModelMap[static::class]->FieldPropMap),QueryBuilderOperator::Equals,$this->$primaryKey)->query();
+        $result = $this->QueryBuilder
+        ->delete(static::GetTableName())
+        ->where(
+            array_search(static::$ModelMap[static::class]->PrimaryKey,static::$ModelMap[static::class]->FieldPropMap),
+            QueryBuilderOperator::Equals,
+            $this->$primaryKey)
+        ->exec();
+
+        if ($result == 1) {
             $this->$primaryKey = null;
+        }else{
+            throw new ExtendORMException();
         }
     }
 
@@ -161,15 +173,16 @@ abstract class Model {
             }
         }
     }
-    public static function FindMany(Criteria $criteria):array{
+    public static function FindMany(Criteria $criteria,IQueryBuilder2 $qb):array{
         $tableName = static::getTableName();
         static::Initialize();
-        $query = QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName);
+        $query = $qb->select(implode(",",array_keys(static::$ModelMap[static::class]->FieldPropMap)))
+        ->from($tableName);
         foreach($criteria->Criterion as $criterion){
             $fieldForSearch = array_search($criterion->Key,static::$ModelMap[static::class]->FieldPropMap);
             $query = $query->where($fieldForSearch,$criterion->Operator,$criterion->Value);
         }        
-        $results = $query->query()->fetchAll(\PDO::FETCH_ASSOC);
+        $results = $query->get();
         $resultObj = array();
         foreach($results as $result){
             $modelType = static::class;
@@ -182,15 +195,16 @@ abstract class Model {
         }
         return $resultObj;
     }
-    public static function FindOne(Criteria $criteria):?static{
+    public static function FindOne(Criteria $criteria,IQueryBuilder2 $qb):?static{
         $tableName = static::getTableName();
         static::Initialize();
-        $query = QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName);
+        $query = $qb->select(implode(",",array_keys(static::$ModelMap[static::class]->FieldPropMap)))
+        ->from($tableName);
         foreach($criteria->Criterion as $criterion){
             $fieldForSearch = array_search($criterion->Key,static::$ModelMap[static::class]->FieldPropMap);
             $query = $query->where($fieldForSearch,$criterion->Operator,$criterion->Value);
         }
-        $result = $query->query()->fetch(\PDO::FETCH_ASSOC);
+        $result = $query->get()[0];
         if(!$result){
             return null;
         }
@@ -202,15 +216,16 @@ abstract class Model {
         }
         return $model;
     }
-    public static function Paging(int $limit,int $offset,Criteria $criteria):array{
+    public static function Paging(int $limit,int $offset,Criteria $criteria,QueryBuilder2 $qb):array{
         $tableName = static::getTableName();
         static::Initialize();
-        $query = QueryBuilder::select(array_keys(static::$ModelMap[static::class]->FieldPropMap),$tableName);
+        $query = $qb->select(implode(",",array_keys(static::$ModelMap[static::class]->FieldPropMap)))
+        ->from($tableName);
         foreach($criteria->Criterion as $criterion){
             $fieldForSearch = array_search($criterion->Key,static::$ModelMap[static::class]->FieldPropMap);
             $query = $query->where($fieldForSearch,$criterion->Operator,$criterion->Value);
         }
-        $results = $query->limit($limit,$offset)->query()->fetchAll(\PDO::FETCH_ASSOC);
+        $results = $query->page($limit,$offset)->get();
         $resultObj = array();
         foreach($results as $result){
             $modelType = static::class;

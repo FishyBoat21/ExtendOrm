@@ -1,7 +1,7 @@
 <?php
 namespace FishyBoat21\ExtendOrm;
 
-use FishyBoat21\ExtendOrm\QueryBuilder\QueryBuilderOperator;
+use FishyBoat21\ExtendOrm\QueryBuilder2\QueryBuilderOperator;
 
 class Criterion{
     public QueryBuilderOperator $Operator;
