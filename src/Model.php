@@ -107,17 +107,18 @@ abstract class Model {
         }
         $values = $this->GetValues();
         $fields = array_keys(static::$ModelMap[static::class]->FieldPropMap);
-        unset($fields[static::GetPrimaryKey()]);
         $primaryKey = static::$ModelMap[static::class]->PrimaryKey;
         $primaryKeyField = array_search($primaryKey,static::$ModelMap[static::class]->FieldPropMap);
+        $data = array_combine($fields,$values);
+        unset($data[$primaryKeyField]);
         if ($this->$primaryKey != null) {
-            $this->QueryBuilder->update(static::GetTableName(),array_combine($fields,$values))
+            $this->QueryBuilder->update(static::GetTableName(),$data)
             ->where($primaryKeyField,QueryBuilderOperator::Equals,$this->$primaryKey)
             ->exec();
             return $this;
         } else {
             $this->$primaryKey = $this->QueryBuilder
-            ->insert(static::GetTableName(),array_combine($fields,$values));
+            ->insert(static::GetTableName(),$data);
             return $this;
         }
     }
@@ -161,15 +162,15 @@ abstract class Model {
 
             if($type === RelationType::HasMany){
                 $localValue = $this->$localKey;
-                return $target::FindMany(new Criteria()->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)));
+                return $target::FindMany(new Criteria()->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)), $this->QueryBuilder);
             }
             if($type ===  RelationType::BelongsTo){
                 $foreignValue = $this->$foreignKey;
-                return $target::FindOne(new Criteria()->Add(new Criterion($ownerKey,QueryBuilderOperator::Equals,$foreignValue)));
+                return $target::FindOne(new Criteria()->Add(new Criterion($ownerKey,QueryBuilderOperator::Equals,$foreignValue)), $this->QueryBuilder);
             }
             if($type === RelationType::HasOne){
                 $localValue = $this->$localKey;
-                return $target::FindOne(new Criteria()->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)));
+                return $target::FindOne(new Criteria()->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)), $this->QueryBuilder);
             }
         }
     }
@@ -186,7 +187,7 @@ abstract class Model {
         $resultObj = array();
         foreach($results as $result){
             $modelType = static::class;
-            $model = new $modelType();
+            $model = new $modelType($qb);
             foreach($result as $key=>$value){
                 $prop = static::$ModelMap[static::class]->FieldPropMap[$key];
                 $model->$prop = $value;
@@ -204,12 +205,12 @@ abstract class Model {
             $fieldForSearch = array_search($criterion->Key,static::$ModelMap[static::class]->FieldPropMap);
             $query = $query->where($fieldForSearch,$criterion->Operator,$criterion->Value);
         }
-        $result = $query->get()[0];
-        if(!$result){
+        if(count($result = $query->get()) == 0){
             return null;
         }
+        $result = $result[0];
         $modelType = static::class;
-        $model = new $modelType();
+        $model = new $modelType($qb);
         foreach($result as $key=>$value){
             $prop = static::$ModelMap[static::class]->FieldPropMap[$key];
             $model->$prop = $value;

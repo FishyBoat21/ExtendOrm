@@ -58,7 +58,7 @@ class QueryBuilder2 implements IQueryBuilder2 {
     public function where(string $column, QueryBuilderOperator $operator, mixed $value): self
     {
         // specific placeholder to handle multiple wheres safely
-        $this->QueryStringBlock['wheres'][] = "$column $operator ?";
+        $this->QueryStringBlock['wheres'][] = "$column $operator->value ?";
         $this->QueryStringBlock['params'][] = $value;
         return $this;
     }
