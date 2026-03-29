@@ -178,12 +178,6 @@ class QueryBuilder2 implements IQueryBuilder2 {
             case 'SELECT':
                 $cols = $this->QueryStringBlock['columns'];
                 $sql = "SELECT $cols FROM $table";
-                if (!empty($sort)) {
-                    $sql .= " ORDER BY " . implode(', ', $sort);
-                }
-                if($limit !== null){
-                    $sql .= " LIMIT $offset, $limit";
-                }
                 break;
             case 'INSERT':
                 $cols = $this->QueryStringBlock['columns'];
@@ -206,10 +200,13 @@ class QueryBuilder2 implements IQueryBuilder2 {
             $sql .= " WHERE " . implode(' AND ', $wheres);
         }
         // Append paging
-        if($type === 'INSERT'){
-            $limit = $this->QueryStringBlock['limit'];
-            $offset = $this->QueryStringBlock['offset'];
-            $sql .= "LIMIT $offset,$limit";
+        if($type === 'SELECT'){
+            if (!empty($sort)) {
+                $sql .= " ORDER BY " . implode(', ', $sort);
+            }
+            if($limit !== null){
+                $sql .= " LIMIT $offset, $limit";
+            }
         }
         // Prepare and Execute
         try {
