@@ -13,4 +13,5 @@ interface IQueryBuilder2 {
     public function delete(string $table): self; // Returns rowCount
     public function get(): array; // Executes SELECT
     public function exec(): int;
+    public function sort(string $field, QueryBuilderSortType $direction = QueryBuilderSortType::Ascending): self;
 }

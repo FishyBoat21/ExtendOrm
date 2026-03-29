@@ -28,6 +28,7 @@ class QueryBuilder2 implements IQueryBuilder2 {
             'params' => [],      // Bind parameters for PDO
             'limit' => 99999999,
             'offset' => 0,
+            'sorts' => []       // Array of sort strings
         ];
     }
 
@@ -169,12 +170,15 @@ class QueryBuilder2 implements IQueryBuilder2 {
         $type = $this->QueryStringBlock['type'];
         $table = $this->QueryStringBlock['table'];
         $wheres = $this->QueryStringBlock['wheres'];
-
+        $sort = $this->QueryStringBlock['sorts'];
         // Build SQL String
         switch ($type) {
             case 'SELECT':
                 $cols = $this->QueryStringBlock['columns'];
                 $sql = "SELECT $cols FROM $table";
+                if (!empty($sort)) {
+                    $sql .= " ORDER BY " . implode(', ', $sort);
+                }
                 break;
             case 'INSERT':
                 $cols = $this->QueryStringBlock['columns'];
@@ -218,6 +222,19 @@ class QueryBuilder2 implements IQueryBuilder2 {
     {
         $this->QueryStringBlock['limit'] = $limit;
         $this->QueryStringBlock['offset'] = $offset;
+        return $this;
+    }
+
+    public function sort(string $field, QueryBuilderSortType $direction = QueryBuilderSortType::Ascending): self
+    {
+        $type = $this->QueryStringBlock['type'];
+        if($type !== 'SELECT'){
+            throw new PDOException("Sorting is only applicable to SELECT queries.");
+        }
+        if (!isset($this->QueryStringBlock['sorts'])) {
+            $this->QueryStringBlock['sorts'] = [];
+        }
+        $this->QueryStringBlock['sorts'][] = "$field $direction";
         return $this;
     }
 }
