@@ -234,7 +234,7 @@ class QueryBuilder2 implements IQueryBuilder2 {
         if (!isset($this->QueryStringBlock['sorts'])) {
             $this->QueryStringBlock['sorts'] = [];
         }
-        $this->QueryStringBlock['sorts'][] = "$field $direction";
+        $this->QueryStringBlock['sorts'][] = "$field $direction->value";
         return $this;
     }
 }

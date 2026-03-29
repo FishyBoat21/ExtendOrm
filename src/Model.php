@@ -182,6 +182,10 @@ abstract class Model {
         foreach($criteria->Criterion as $criterion){
             $fieldForSearch = array_search($criterion->Key,static::$ModelMap[static::class]->FieldPropMap);
             $query = $query->where($fieldForSearch,$criterion->Operator,$criterion->Value);
+        }
+        foreach($criteria->Sort as $sort){
+            $fieldForSort = array_search($sort->Field,static::$ModelMap[static::class]->FieldPropMap);
+            $query = $query->sort($fieldForSort,$sort->Direction);
         }        
         $results = $query->get();
         $resultObj = array();
@@ -204,6 +208,10 @@ abstract class Model {
         foreach($criteria->Criterion as $criterion){
             $fieldForSearch = array_search($criterion->Key,static::$ModelMap[static::class]->FieldPropMap);
             $query = $query->where($fieldForSearch,$criterion->Operator,$criterion->Value);
+        }
+        foreach($criteria->Sort as $sort){
+            $fieldForSort = array_search($sort->Field,static::$ModelMap[static::class]->FieldPropMap);
+            $query = $query->sort($fieldForSort,$sort->Direction);
         }
         if(count($result = $query->get()) == 0){
             return null;
