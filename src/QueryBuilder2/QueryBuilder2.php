@@ -171,6 +171,8 @@ class QueryBuilder2 implements IQueryBuilder2 {
         $table = $this->QueryStringBlock['table'];
         $wheres = $this->QueryStringBlock['wheres'];
         $sort = $this->QueryStringBlock['sorts'];
+        $limit = $this->QueryStringBlock['limit'];
+        $offset = $this->QueryStringBlock['offset'];
         // Build SQL String
         switch ($type) {
             case 'SELECT':
@@ -178,6 +180,9 @@ class QueryBuilder2 implements IQueryBuilder2 {
                 $sql = "SELECT $cols FROM $table";
                 if (!empty($sort)) {
                     $sql .= " ORDER BY " . implode(', ', $sort);
+                }
+                if($limit !== null){
+                    $sql .= " LIMIT $offset, $limit";
                 }
                 break;
             case 'INSERT':

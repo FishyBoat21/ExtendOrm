@@ -162,15 +162,15 @@ abstract class Model {
 
             if($type === RelationType::HasMany){
                 $localValue = $this->$localKey;
-                return $target::FindMany(new Criteria()->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)), $this->QueryBuilder);
+                return $target::FindMany((new Criteria())->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)), $this->QueryBuilder);
             }
             if($type ===  RelationType::BelongsTo){
                 $foreignValue = $this->$foreignKey;
-                return $target::FindOne(new Criteria()->Add(new Criterion($ownerKey,QueryBuilderOperator::Equals,$foreignValue)), $this->QueryBuilder);
+                return $target::FindOne((new Criteria())->Add(new Criterion($ownerKey,QueryBuilderOperator::Equals,$foreignValue)), $this->QueryBuilder);
             }
             if($type === RelationType::HasOne){
                 $localValue = $this->$localKey;
-                return $target::FindOne(new Criteria()->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)), $this->QueryBuilder);
+                return $target::FindOne((new Criteria())->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)), $this->QueryBuilder);
             }
         }
     }
