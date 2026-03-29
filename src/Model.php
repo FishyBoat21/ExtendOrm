@@ -234,11 +234,15 @@ abstract class Model {
             $fieldForSearch = array_search($criterion->Key,static::$ModelMap[static::class]->FieldPropMap);
             $query = $query->where($fieldForSearch,$criterion->Operator,$criterion->Value);
         }
+        foreach($criteria->Sort as $sort){
+            $fieldForSort = array_search($sort->Field,static::$ModelMap[static::class]->FieldPropMap);
+            $query = $query->sort($fieldForSort,$sort->Direction);
+        }
         $results = $query->page($limit,$offset)->get();
         $resultObj = array();
         foreach($results as $result){
             $modelType = static::class;
-            $model = new $modelType();
+            $model = new $modelType($qb);
             foreach($result as $key=>$value){
                 $prop = static::$ModelMap[static::class]->FieldPropMap[$key];
                 $model->$prop = $value;
