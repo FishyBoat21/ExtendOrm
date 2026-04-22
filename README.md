@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![PHP](https://img.shields.io/badge/PHP-8.0+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
+[![PHP](https://img.shields.io/badge/PHP-8.4+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![Composer](https://img.shields.io/badge/Composer-fishyboat21/extendorm-blue?style=for-the-badge&logo=composer&logoColor=white)](https://packagist.org/packages/fishyboat21/extendorm)
 
@@ -36,7 +36,7 @@
 
 ## 📌 About
 
-**ExtendOrm** is a lightweight, easy-to-use Object-Relational Mapping (ORM) library for PHP 8.0+. It provides a simple yet powerful way to interact with your database using PHP objects, with support for relationships, query building, and transactions.
+**ExtendOrm** is a lightweight, easy-to-use Object-Relational Mapping (ORM) library for PHP 8.4+. It provides a simple yet powerful way to interact with your database using PHP objects, with support for relationships, query building, and transactions.
 
 Perfect for developers who want ORM functionality without the complexity and overhead of heavier solutions like Doctrine or Eloquent.
 
@@ -58,7 +58,7 @@ Perfect for developers who want ORM functionality without the complexity and ove
 
 ## 📋 Requirements
 
-- **PHP** 8.0 or higher
+- **PHP** 8.4 or higher
 - **PDO** extension enabled
 - **Database**: MySQL, PostgreSQL, SQLite, or any PDO-compatible database
 
