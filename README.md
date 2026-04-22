@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![Composer](https://img.shields.io/badge/Composer-fishyboat21/extendorm-blue?style=for-the-badge&logo=composer&logoColor=white)](https://packagist.org/packages/fishyboat21/extendorm)
 
-**A Simple, Lightweight CRUD ORM for PHP 8+**
+**A Simple, Lightweight CRUD ORM for PHP 8.4+**
 
 </div>
 
@@ -17,6 +17,7 @@
 - [About](#-about)
 - [Features](#-features)
 - [Requirements](#-requirements)
+- [Database Compatibility](#-database-compatibility)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
 - [Documentation](#-documentation)
@@ -45,7 +46,7 @@ Perfect for developers who want ORM functionality without the complexity and ove
 ## ✨ Features
 
 - 🚀 **Lightweight & Fast** - Minimal overhead, no bloat
-- 🔧 **PHP 8+ Attributes** - Clean, modern syntax for model definitions
+- 🔧 **PHP 8.4+ Attributes** - Clean, modern syntax for model definitions
 - 🔗 **Relationships** - HasOne, HasMany, BelongsTo support
 - 📝 **CRUD Operations** - Simple save, find, update, delete methods
 - 🔍 **Query Builder** - Fluent interface for complex queries
@@ -60,7 +61,74 @@ Perfect for developers who want ORM functionality without the complexity and ove
 
 - **PHP** 8.4 or higher
 - **PDO** extension enabled
-- **Database**: MySQL, PostgreSQL, SQLite, or any PDO-compatible database
+- **Database**: MySQL or any PDO-compatible database
+
+> ⚠️ **Important Note**: For databases other than MySQL (PostgreSQL, SQLite, etc.), you may need to modify the `QueryBuilder` to handle database-specific SQL syntax (e.g., `LIMIT`/`OFFSET` syntax, identifier quoting, date functions, etc.)
+
+---
+
+## 🗄️ Database Compatibility
+
+| Database | Status | Notes |
+|----------|--------|-------|
+| **MySQL** | ✅ Fully Supported | Tested and recommended |
+| **MariaDB** | ✅ Fully Supported | Compatible with MySQL |
+| **PostgreSQL** | ⚠️ Partial Support | May require `LIMIT`/`OFFSET` syntax changes |
+| **SQLite** | ⚠️ Partial Support | May require quote identifier changes |
+| **SQL Server** | ❌ Not Tested | Unconfirmed compatibility |
+| **Oracle** | ❌ Not Tested | Unconfirmed compatibility |
+
+### Known MySQL-Specific Syntax
+
+The QueryBuilder currently uses MySQL syntax for the following:
+
+```sql
+-- LIMIT clause (MySQL style)
+LIMIT offset, count
+
+-- Identifier quoting
+`column_name`
+
+-- Auto-increment
+AUTO_INCREMENT
+
+-- Date/Time functions
+NOW(), CURDATE()
+```
+
+### For Other Databases
+
+If you're using PostgreSQL, SQLite, or another database, you may need to adjust:
+
+1. **LIMIT/OFFSET Syntax**
+   ```sql
+   -- MySQL: LIMIT offset, count
+   LIMIT 0, 10
+   
+   -- PostgreSQL/SQLite: LIMIT count OFFSET offset
+   LIMIT 10 OFFSET 0
+   ```
+
+2. **Identifier Quoting**
+   ```sql
+   -- MySQL: backticks
+   `column_name`
+   
+   -- PostgreSQL/SQLite: double quotes
+   "column_name"
+   ```
+
+3. **Auto-increment Primary Keys**
+   ```sql
+   -- MySQL: AUTO_INCREMENT
+   id INT AUTO_INCREMENT PRIMARY KEY
+   
+   -- PostgreSQL: SERIAL
+   id SERIAL PRIMARY KEY
+   
+   -- SQLite: AUTOINCREMENT
+   id INTEGER PRIMARY KEY AUTOINCREMENT
+   ```
 
 ---
 
@@ -120,13 +188,19 @@ use FishyBoat21\ExtendOrm\Attribute\PrimaryKey;
 use FishyBoat21\ExtendOrm\Model;
 use PDO;
 
-// 1. Setup database connection
+// 1. Setup database connection (MySQL example)
 $pdo = new PDO(
     'mysql:host=localhost;dbname=mydb;charset=utf8mb4',
     'username',
     'password',
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
+
+// For PostgreSQL:
+// $pdo = new PDO('pgsql:host=localhost;dbname=mydb', 'username', 'password');
+
+// For SQLite:
+// $pdo = new PDO('sqlite:/path/to/database.sqlite');
 
 // 2. Boot the ORM
 Database::Boot($pdo);
@@ -178,12 +252,24 @@ Initialize the database connection using the singleton `Database` class:
 use FishyBoat21\ExtendOrm\Database;
 use PDO;
 
+// MySQL
 $pdo = new PDO(
     'mysql:host=localhost;dbname=mydb;charset=utf8mb4',
     'username',
     'password',
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
+
+// PostgreSQL
+// $pdo = new PDO(
+//     'pgsql:host=localhost;dbname=mydb',
+//     'username',
+//     'password',
+//     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+// );
+
+// SQLite
+// $pdo = new PDO('sqlite:/path/to/database.sqlite');
 
 // Boot the ORM with your PDO connection
 Database::Boot($pdo);
@@ -733,6 +819,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - Add tests for new features
 - Update documentation as needed
 - Keep commits atomic and descriptive
+- **Note**: If adding support for non-MySQL databases, please include appropriate tests and documentation
 
 ---
 
@@ -762,7 +849,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 ## 🙏 Acknowledgments
 
 - Inspired by **Laravel Eloquent** and **Doctrine ORM**
-- Built with ❤️ using **PHP 8+** features (Attributes, Enums, Typed Properties)
+- Built with ❤️ using **PHP 8.4+** features (Attributes, Enums, Typed Properties)
 - Thanks to all contributors and users!
 
 ---
