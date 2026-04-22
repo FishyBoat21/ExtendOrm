@@ -1,16 +1,28 @@
 {
-    "name": "fishyboat21/extendorm",
-    "description": "Simple Lightweight CRUD ORM",
-    "autoload": {
-        "psr-4": {
-            "FishyBoat21\\ExtendOrm\\": "src/"
-        }
-    },
-    "authors": [
-        {
-            "name": "Simple Lightweight CRUD ORM"
-        }
-    ],
-    "require": {},
-    "license": "GPL-3.0-or-later"
+  "name": "fishyboat21/extendorm",
+  "description": "Simple Lightweight CRUD ORM for PHP 8.4+",
+  "type": "library",
+  "keywords": ["orm", "database", "pdo", "crud", "php8", "lightweight"],
+  "homepage": "https://github.com/FishyBoat21/ExtendOrm",
+  "license": "GPL-3.0-or-later",
+  "authors": [
+    {
+      "name": "FishyBoat21",
+      "homepage": "https://github.com/FishyBoat21"
+    }
+  ],
+  "require": {
+    "php": ">=8.4",
+    "ext-pdo": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "FishyBoat21\\ExtendOrm\\": "src/"
+    }
+  },
+  "support": {
+    "issues": "https://github.com/FishyBoat21/ExtendOrm/issues",
+    "source": "https://github.com/FishyBoat21/ExtendOrm"
+  },
+  "minimum-stability": "stable"
 }
