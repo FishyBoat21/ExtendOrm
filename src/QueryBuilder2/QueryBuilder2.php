@@ -26,8 +26,8 @@ class QueryBuilder2 implements IQueryBuilder2 {
             'values' => [],      // For INSERT/UPDATE
             'wheres' => [],      // Array of condition strings
             'params' => [],      // Bind parameters for PDO
-            'limit' => 99999999,
-            'offset' => 0,
+            'limit' => null,
+            'offset' => null,
             'sorts' => []       // Array of sort strings
         ];
     }
@@ -205,7 +205,11 @@ class QueryBuilder2 implements IQueryBuilder2 {
                 $sql .= " ORDER BY " . implode(', ', $sort);
             }
             if($limit !== null){
-                $sql .= " LIMIT $offset, $limit";
+                if ($offset !== null && $offset > 0) {
+                    $sql .= " LIMIT $limit OFFSET $offset";
+                } else {
+                    $sql .= " LIMIT $limit";
+                }
             }
         }
         // Prepare and Execute

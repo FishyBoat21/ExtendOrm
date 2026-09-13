@@ -19,11 +19,15 @@ abstract class Model {
     protected static array $ModelMap = array();
     protected static bool $IsInitialize = false;
     protected IQueryBuilder2 $QueryBuilder;
+    protected array $loadedRelations = [];
     public function __construct(IQueryBuilder2 $queryBuilder) {
         if(!isset(static::$ModelMap[static::class])) {
             static::Initialize();
         }
         $this->QueryBuilder=$queryBuilder;
+        foreach (array_keys(static::$ModelMap[static::class]->RelationMap) as $relationProp) {
+            unset($this->$relationProp);
+        }
     }
     protected static function Initialize():void {
         static::$ModelMap[static::class] = new ModelMap();
@@ -80,7 +84,7 @@ abstract class Model {
     protected function GetValues():array{
         $values = [];
         foreach(array_values(static::$ModelMap[static::class]->FieldPropMap) as $prop){
-            $values[] = $this->$prop;
+            $values[] = isset($this->$prop) ? $this->$prop : null;
         }
         return $values;
     }
@@ -111,7 +115,7 @@ abstract class Model {
         $primaryKeyField = array_search($primaryKey,static::$ModelMap[static::class]->FieldPropMap);
         $data = array_combine($fields,$values);
         unset($data[$primaryKeyField]);
-        if ($this->$primaryKey != null) {
+        if (isset($this->$primaryKey) && $this->$primaryKey !== null) {
             $this->QueryBuilder->update(static::GetTableName(),$data)
             ->where($primaryKeyField,QueryBuilderOperator::Equals,$this->$primaryKey)
             ->exec();
@@ -126,7 +130,7 @@ abstract class Model {
     public function Delete():void {
         $primaryKey = static::$ModelMap[static::class]->PrimaryKey;
 
-        if ($primaryKey == null) {
+        if ($primaryKey == null || !isset($this->$primaryKey) || $this->$primaryKey === null) {
             throw new ExtendORMException("Not a valid record");
         }
 
@@ -141,9 +145,13 @@ abstract class Model {
         ->exec();
 
         if ($result == 1) {
-            $this->$primaryKey = null;
+            try {
+                $this->$primaryKey = null;
+            } catch (\TypeError) {
+                unset($this->$primaryKey);
+            }
         }else{
-            throw new ExtendORMException();
+            throw new ExtendORMException("Delete failed or affected multiple rows");
         }
     }
 
@@ -153,6 +161,10 @@ abstract class Model {
             static::Initialize();
         }
         if(isset(static::$ModelMap[static::class]->RelationMap[$name])){
+            if(array_key_exists($name, $this->loadedRelations)){
+                return $this->loadedRelations[$name];
+            }
+
             $relation = static::$ModelMap[static::class]->RelationMap[$name];
             $type = $relation["type"];
             $target = $relation["target"];
@@ -160,19 +172,29 @@ abstract class Model {
             $localKey = $relation["localKey"] ?? null;
             $ownerKey = $relation["ownerKey"] ?? null;
 
+            $result = null;
             if($type === RelationType::HasMany){
                 $localValue = $this->$localKey;
-                return $target::FindMany((new Criteria())->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)), $this->QueryBuilder);
+                $result = $target::FindMany((new Criteria())->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)), $this->QueryBuilder);
             }
-            if($type ===  RelationType::BelongsTo){
+            elseif($type ===  RelationType::BelongsTo){
                 $foreignValue = $this->$foreignKey;
-                return $target::FindOne((new Criteria())->Add(new Criterion($ownerKey,QueryBuilderOperator::Equals,$foreignValue)), $this->QueryBuilder);
+                $result = $target::FindOne((new Criteria())->Add(new Criterion($ownerKey,QueryBuilderOperator::Equals,$foreignValue)), $this->QueryBuilder);
             }
-            if($type === RelationType::HasOne){
+            elseif($type === RelationType::HasOne){
                 $localValue = $this->$localKey;
-                return $target::FindOne((new Criteria())->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)), $this->QueryBuilder);
+                $result = $target::FindOne((new Criteria())->Add(new Criterion($foreignKey,QueryBuilderOperator::Equals,$localValue)), $this->QueryBuilder);
             }
+
+            $this->loadedRelations[$name] = $result;
+            try {
+                $this->$name = $result;
+            } catch (\TypeError) {
+                // Keep in loadedRelations if property doesn't allow the assigned type
+            }
+            return $result;
         }
+        return null;
     }
     public static function FindMany(Criteria $criteria,IQueryBuilder2 $qb):array{
         $tableName = static::getTableName();
@@ -213,10 +235,11 @@ abstract class Model {
             $fieldForSort = array_search($sort->Field,static::$ModelMap[static::class]->FieldPropMap);
             $query = $query->sort($fieldForSort,$sort->Direction);
         }
-        if(count($result = $query->get()) == 0){
+        $results = $query->page(1, 0)->get();
+        if(empty($results)){
             return null;
         }
-        $result = $result[0];
+        $result = $results[0];
         $modelType = static::class;
         $model = new $modelType($qb);
         foreach($result as $key=>$value){
@@ -225,7 +248,7 @@ abstract class Model {
         }
         return $model;
     }
-    public static function Paging(int $limit,int $offset,Criteria $criteria,QueryBuilder2 $qb):array{
+    public static function Paging(int $limit,int $offset,Criteria $criteria,IQueryBuilder2 $qb):array{
         $tableName = static::getTableName();
         static::Initialize();
         $query = $qb->select(implode(",",array_keys(static::$ModelMap[static::class]->FieldPropMap)))
