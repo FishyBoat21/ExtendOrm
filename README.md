@@ -68,7 +68,7 @@ Perfect for developers who want ORM functionality without the complexity and ove
 - **PDO** extension enabled
 - **Database**: MySQL or MariaDB (fully supported)
 
-> ⚠️ **Important Note**: Identifiers are quoted using the active PDO driver's convention and paging uses the portable `LIMIT n OFFSET m` form, so SQLite and PostgreSQL work in practice — but they are not yet covered by an integration test. See *Database Compatibility* below.
+> ⚠️ **Important Note**: Identifiers are quoted using the active PDO driver's convention and paging uses the portable `LIMIT n OFFSET m` form. MariaDB (in CI) and SQLite (by default) are both exercised by the test suite; PostgreSQL should work but has no integration test yet. See *Database Compatibility* below.
 
 ---
 
@@ -76,9 +76,9 @@ Perfect for developers who want ORM functionality without the complexity and ove
 
 | Database | Status | Notes |
 |----------|--------|-------|
-| **MySQL** | ✅ Fully Supported | Recommended |
-| **MariaDB** | ✅ Fully Supported | Compatible with MySQL |
-| **SQLite** | 🧪 Used by the test suite | Backs the in-memory test database; not a production recommendation |
+| **MariaDB** | ✅ Verified | The whole suite passes against MariaDB 12.3, and against MariaDB in CI |
+| **MySQL** | ✅ Expected | Not separately verified — the CI service is MariaDB, which shares MySQL's driver |
+| **SQLite** | ✅ Verified | Backs the default in-memory test database |
 | **PostgreSQL** | ⚠️ Unverified | Quoting and paging are portable, but there is no integration test yet |
 | **SQL Server** | ❌ Not Tested | Unconfirmed compatibility |
 | **Oracle** | ❌ Not Tested | Unconfirmed compatibility |
@@ -890,14 +890,26 @@ ExtendOrm/
 
 ## 🧪 Testing
 
-The suite runs entirely against an in-memory SQLite database, so it needs no server:
+The suite runs against an in-memory SQLite database by default, so it needs no server:
 
 ```bash
 composer test        # PHPUnit
 composer analyse     # PHPStan (level 5)
 ```
 
-CI runs both on PHP 8.1, 8.2, 8.3 and 8.4 — see [.github/workflows/ci.yml](.github/workflows/ci.yml).
+Point it at a MySQL/MariaDB server to run the identical suite there:
+
+```bash
+EXTENDORM_TEST_DSN='mysql:host=127.0.0.1;port=3306;dbname=extendorm_test;charset=utf8mb4' \
+EXTENDORM_TEST_USER=root \
+EXTENDORM_TEST_PASSWORD= \
+composer test
+```
+
+The database named in the DSN must already exist — the suite creates and resets
+its own tables inside it. CI runs the SQLite matrix on PHP 8.1–8.4 plus a
+MariaDB job, so both supported drivers are covered — see
+[.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ---
 

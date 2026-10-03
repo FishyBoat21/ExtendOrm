@@ -83,8 +83,9 @@ final class DialectTest extends TestCase
 
     public function testBuilderPicksUpTheConnectionDialect(): void
     {
-        // The suite runs on SQLite, so the builder must resolve the ANSI dialect.
-        $this->assertSame('sqlite', $this->queryBuilder()->dialect()->name());
+        // The builder must resolve whatever driver the connection actually is,
+        // whether that is sqlite or mysql.
+        $this->assertSame($this->driver(), $this->queryBuilder()->dialect()->name());
     }
 
     public function testBuilderAcceptsAnExplicitDialect(): void

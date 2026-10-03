@@ -41,3 +41,44 @@ jobs:
       - name: Run static analysis
         if: matrix.php == '8.4'
         run: composer analyse
+
+  # MySQL/MariaDB is the driver the library actually targets, so "supported"
+  # has to mean something. The same suite runs here against a real server.
+  mariadb:
+    name: MariaDB
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes'
+          MARIADB_DATABASE: extendorm_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_sqlite, pdo_mysql
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Run tests against MariaDB
+        run: composer test
+        env:
+          EXTENDORM_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=extendorm_test;charset=utf8mb4'
+          EXTENDORM_TEST_USER: root
+          EXTENDORM_TEST_PASSWORD: ''
