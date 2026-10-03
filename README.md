@@ -2,11 +2,11 @@
 
 <div align="center">
 
-[![PHP](https://img.shields.io/badge/PHP-8.4+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
+[![PHP](https://img.shields.io/badge/PHP-8.1+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Composer](https://img.shields.io/badge/Composer-fishyboat21/extendorm-blue?style=for-the-badge&logo=composer&logoColor=white)](https://packagist.org/packages/fishyboat21/extendorm)
 
-**A Simple, Lightweight CRUD ORM for PHP 8.4+**
+**A Simple, Lightweight CRUD ORM for PHP 8.1+**
 
 </div>
 
@@ -25,9 +25,11 @@
   - [Defining Models](#defining-models)
   - [Attributes](#attributes)
   - [Relationships](#relationships)
+  - [Eager Loading](#eager-loading)
   - [CRUD Operations](#crud-operations)
   - [Query Builder](#query-builder)
   - [Transactions](#transactions)
+  - [Testing](#testing)
 - [Examples](#-examples)
 - [API Reference](#-api-reference)
 - [Contributing](#-contributing)
@@ -37,7 +39,7 @@
 
 ## 📌 About
 
-**ExtendOrm** is a lightweight, easy-to-use Object-Relational Mapping (ORM) library for PHP 8.4+. It provides a simple yet powerful way to interact with your database using PHP objects, with support for relationships, query building, and transactions.
+**ExtendOrm** is a lightweight, easy-to-use Object-Relational Mapping (ORM) library for PHP 8.1+. It provides a simple yet powerful way to interact with your database using PHP objects, with support for relationships, query building, and transactions.
 
 Perfect for developers who want ORM functionality without the complexity and overhead of heavier solutions like Doctrine or Eloquent.
 
@@ -46,24 +48,27 @@ Perfect for developers who want ORM functionality without the complexity and ove
 ## ✨ Features
 
 - 🚀 **Lightweight & Fast** - Minimal overhead, no bloat
-- 🔧 **PHP 8.4+ Attributes** - Clean, modern syntax for model definitions
+- 🔧 **PHP Attributes** - Clean, modern syntax for model definitions
 - 🔗 **Relationships** - HasOne, HasMany, BelongsTo support
 - 📝 **CRUD Operations** - Simple save, find, update, delete methods
-- 🔍 **Query Builder** - Fluent interface for complex queries
-- 🔒 **Transactions** - Automatic rollback on errors
+- 🔍 **Query Builder** - Fluent interface with `IN`, `BETWEEN` and `OR` conditions
+- ⚡ **Eager Loading** - `with()` preloads a relation in one query for the whole result set
+- 🔒 **Transactions** - Automatic rollback on errors, with nested savepoints
 - 📦 **Pagination** - Built-in support for paginated results
+- 🧮 **Dirty Tracking** - `save()` writes only the columns you actually changed
+- 🗄️ **Dialect Layer** - Identifier quoting follows the active PDO driver
 - 🎯 **Type-Safe** - Leverages PHP's type system
-- 💾 **PDO-Based** - Works with MySQL, PostgreSQL, SQLite, and more
+- 💾 **PDO-Based** - Built on plain PDO; MySQL/MariaDB fully supported, other drivers portable but unverified
 
 ---
 
 ## 📋 Requirements
 
-- **PHP** 8.4 or higher
+- **PHP** 8.1 or higher
 - **PDO** extension enabled
-- **Database**: MySQL or any PDO-compatible database
+- **Database**: MySQL or MariaDB (fully supported)
 
-> ⚠️ **Important Note**: For databases other than MySQL (PostgreSQL, SQLite, etc.), you may need to modify the `QueryBuilder` to handle database-specific SQL syntax (e.g., `LIMIT`/`OFFSET` syntax, identifier quoting, date functions, etc.)
+> ⚠️ **Important Note**: Identifiers are quoted using the active PDO driver's convention and paging uses the portable `LIMIT n OFFSET m` form, so SQLite and PostgreSQL work in practice — but they are not yet covered by an integration test. See *Database Compatibility* below.
 
 ---
 
@@ -71,23 +76,39 @@ Perfect for developers who want ORM functionality without the complexity and ove
 
 | Database | Status | Notes |
 |----------|--------|-------|
-| **MySQL** | ✅ Fully Supported | Tested and recommended |
+| **MySQL** | ✅ Fully Supported | Recommended |
 | **MariaDB** | ✅ Fully Supported | Compatible with MySQL |
-| **PostgreSQL** | ⚠️ Partial Support | May require `LIMIT`/`OFFSET` syntax changes |
-| **SQLite** | ⚠️ Partial Support | May require quote identifier changes |
+| **SQLite** | 🧪 Used by the test suite | Backs the in-memory test database; not a production recommendation |
+| **PostgreSQL** | ⚠️ Unverified | Quoting and paging are portable, but there is no integration test yet |
 | **SQL Server** | ❌ Not Tested | Unconfirmed compatibility |
 | **Oracle** | ❌ Not Tested | Unconfirmed compatibility |
 
-### Known MySQL-Specific Syntax
+### Dialects
 
-The QueryBuilder currently uses MySQL syntax for the following:
+Identifier quoting is delegated to a `Dialect` resolved from the PDO connection:
+
+| Driver | Dialect | Identifiers are quoted with |
+|--------|---------|-----------------------------|
+| `mysql` | `MySqlDialect` | backticks |
+| anything else | `AnsiDialect` | double quotes |
+
+Pass your own implementation if you need different behaviour:
+
+```php
+use FishyBoat21\ExtendOrm\QueryBuilder2\QueryBuilder2;
+use FishyBoat21\ExtendOrm\Dialect\MySqlDialect;
+
+$qb = new QueryBuilder2($pdo, new MySqlDialect());
+```
+
+### Driver-Specific Notes
+
+The builder emits portable SQL for everything it constructs: identifier quoting follows the active PDO driver, and paging uses `LIMIT n OFFSET m`. The items below concern your own schema and raw SQL:
 
 ```sql
--- LIMIT clause (MySQL style)
-LIMIT offset, count
-
--- Identifier quoting
-`column_name`
+-- Identifier quoting is emitted per driver
+`column_name`      -- MySQL / MariaDB
+"column_name"      -- SQLite / PostgreSQL
 
 -- Auto-increment
 AUTO_INCREMENT
@@ -98,7 +119,7 @@ NOW(), CURDATE()
 
 ### For Other Databases
 
-If you're using PostgreSQL, SQLite, or another database, you may need to adjust:
+If you hand-write raw SQL alongside the ORM, keep the following in mind. The ORM's own queries already handle the first two:
 
 1. **LIMIT/OFFSET Syntax**
    ```sql
@@ -468,6 +489,28 @@ class Post extends Model {
 
 ---
 
+### Eager Loading
+
+Touching a relation runs a query the first time it is accessed, so iterating a
+result set costs one extra query per model — the classic N+1. `AddWith()`
+preloads relations for the whole set, one query per relation:
+
+```php
+$criteria = (new Criteria())->AddWith('posts', 'profile');
+
+foreach (User::FindMany($criteria, $qb) as $user) {
+    echo $user->posts[0]->title;   // already loaded, no extra query
+}
+```
+
+The loop above costs 3 queries with `AddWith` — one for the users, one for all
+their posts, one for all their profiles — against `1 + N` without it.
+
+`FindOne()` and `Paging()` honour `AddWith()` as well. Nested paths such as
+`AddWith('posts.author')` are not supported yet.
+
+---
+
 ### CRUD Operations
 
 #### Create (Insert)
@@ -519,6 +562,10 @@ $user->username = 'updated_name';
 $user->email = 'newemail@example.com';
 $user->save(); // Performs UPDATE (primary key exists)
 ```
+
+Only the columns you actually changed are written, so a value another writer
+updated after you loaded the row is not overwritten from your stale copy. Saving
+a model you did not edit issues no statement at all.
 
 #### Delete
 
@@ -583,6 +630,27 @@ $criteria->AddSort(new Sort('name', QueryBuilderSortType::Ascending));
 // Execute query
 $users = User::FindMany($criteria, $qb);
 ```
+
+---
+
+#### Conditions: IN, BETWEEN and OR
+
+```php
+use FishyBoat21\ExtendOrm\Criteria;
+use FishyBoat21\ExtendOrm\Criterion;
+use FishyBoat21\ExtendOrm\QueryBuilder2\QueryBuilderOperator;
+
+$criteria = new Criteria();
+$criteria->Add(new Criterion('id', QueryBuilderOperator::In, [1, 2, 3]));
+$criteria->Add(new Criterion('age', QueryBuilderOperator::Between, [18, 30]));
+
+// AddOr() joins a condition with OR instead of AND.
+$criteria->AddOr(new Criterion('role', QueryBuilderOperator::Equals, 'admin'));
+```
+
+> **Note**: only AND/OR connectors are supported — there are no nested groups yet,
+> so standard SQL precedence applies. `Add(a)`, `Add(b)`, `AddOr(c)` compiles to
+> `a AND b OR c`, which SQL reads as `(a AND b) OR c`.
 
 ---
 
@@ -728,7 +796,7 @@ foreach ($posts as $post) {
 | `delete()` | Delete record from database | `void` |
 | `FindOne(Criteria $criteria, IQueryBuilder2 $qb)` | Find single record matching criteria | `?static` |
 | `FindMany(Criteria $criteria, IQueryBuilder2 $qb)` | Find multiple records matching criteria | `array` |
-| `Paging(int $limit, int $offset, Criteria $criteria, QueryBuilder2 $qb)` | Get paginated results | `array` |
+| `Paging(int $limit, int $offset, Criteria $criteria, IQueryBuilder2 $qb)` | Get paginated results | `array` |
 | `GetTableName()` | Get the table name for the model | `string` |
 
 ### Database Class
@@ -744,8 +812,10 @@ foreach ($posts as $post) {
 
 | Method | Description | Returns |
 |--------|-------------|---------|
-| `Add(Criterion $criterion)` | Add a where condition | `self` |
+| `Add(Criterion $criterion)` | Add a condition joined with AND | `self` |
+| `AddOr(Criterion $criterion)` | Add a condition joined with OR | `self` |
 | `AddSort(Sort $sort)` | Add sorting order | `self` |
+| `AddWith(string ...$relations)` | Preload relations for the result set | `self` |
 
 ### QueryBuilderOperator Enum
 
@@ -759,7 +829,11 @@ foreach ($posts as $post) {
 | `MoreThanEquals` | `>=` |
 | `Like` | `LIKE` |
 | `NotLike` | `NOT LIKE` |
-| `Is` | `IS` (for NULL) |
+| `Is` | `IS` (NULL only — throws otherwise) |
+| `IsNull` | `IS NULL` |
+| `IsNotNull` | `IS NOT NULL` |
+| `In` / `NotIn` | `IN (...)` / `NOT IN (...)` — value is a non-empty array |
+| `Between` / `NotBetween` | `BETWEEN ? AND ?` — value is `[minimum, maximum]` |
 
 ### QueryBuilderSortType Enum
 
@@ -782,6 +856,12 @@ ExtendOrm/
 │   │   ├── Relation.php
 │   │   └── Relation/
 │   │       └── RelationType.php
+│   ├── Dialect/
+│   │   ├── Dialect.php
+│   │   ├── AbstractDialect.php
+│   │   ├── MySqlDialect.php
+│   │   ├── AnsiDialect.php
+│   │   └── DialectFactory.php
 │   ├── QueryBuilder2/
 │   │   ├── QueryBuilder2.php
 │   │   ├── IQueryBuilder2.php
@@ -794,10 +874,30 @@ ExtendOrm/
 │   ├── Criterion.php
 │   ├── Sort.php
 │   └── ExtendORMException.php
+├── tests/
+│   ├── Models/          # Fixture models used by the suite
+│   ├── Support/         # Test helpers (e.g. QuerySpy)
+│   └── *Test.php
+├── .github/workflows/ci.yml
 ├── composer.json
+├── phpunit.xml
+├── phpstan.neon
 ├── README.md
 └── LICENSE
 ```
+
+---
+
+## 🧪 Testing
+
+The suite runs entirely against an in-memory SQLite database, so it needs no server:
+
+```bash
+composer test        # PHPUnit
+composer analyse     # PHPStan (level 5)
+```
+
+CI runs both on PHP 8.1, 8.2, 8.3 and 8.4 — see [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ---
 
@@ -816,7 +916,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ### Guidelines
 
 - Follow PSR-12 coding standards
-- Add tests for new features
+- Add tests for new features — see [Testing](#-testing); `composer test` must stay green
 - Update documentation as needed
 - Keep commits atomic and descriptive
 - **Note**: If adding support for non-MySQL databases, please include appropriate tests and documentation
@@ -856,7 +956,7 @@ SOFTWARE.
 ## 🙏 Acknowledgments
 
 - Inspired by **Laravel Eloquent** and **Doctrine ORM**
-- Built with ❤️ using **PHP 8.4+** features (Attributes, Enums, Typed Properties)
+- Built with ❤️ using **PHP 8.1+** features (Attributes, Enums, Typed Properties)
 - Thanks to all contributors and users!
 
 ---

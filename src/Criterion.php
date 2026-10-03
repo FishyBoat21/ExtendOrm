@@ -7,10 +7,12 @@ class Criterion{
     public QueryBuilderOperator $Operator;
     public $Value;
     public string $Key;
-    public function __construct(string $key, QueryBuilderOperator $operator,$value) {
+    /** How this condition joins the previous one: 'AND' or 'OR'. */
+    public string $Boolean = 'AND';
+    public function __construct(string $key, QueryBuilderOperator $operator,$value, string $boolean = 'AND') {
         $this->Key = $key;
         $this->Operator = $operator;
         $this->Value = $value;
+        $this->Boolean = $boolean;
     }
 }
-?>

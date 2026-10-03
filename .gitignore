@@ -1,4 +1,7 @@
 /vendor/
+/composer.lock
 /model/
 /test_script/
 /.agents/
+/.phpunit.cache/
+/.phpunit.result.cache

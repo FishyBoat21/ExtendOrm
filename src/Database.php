@@ -22,6 +22,14 @@ class Database {
     public static function Boot(PDO $connection){
         static::$instance = new Database($connection);
     }
+    /**
+     * Forgets the current connection. Mainly useful for tests that boot the ORM
+     * against a fresh database per test, and for long-running workers that need
+     * to drop a dead connection.
+     */
+    public static function Reset(): void {
+        static::$instance = null;
+    }
     public function GetConnection(): PDO {
         return $this->pdo;
     }
@@ -55,4 +63,3 @@ class Database {
         }
     }
 }
-?>

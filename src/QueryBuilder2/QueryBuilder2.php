@@ -1,17 +1,33 @@
 <?php
 namespace FishyBoat21\ExtendOrm\QueryBuilder2;
 
+use FishyBoat21\ExtendOrm\Dialect\Dialect;
+use FishyBoat21\ExtendOrm\Dialect\DialectFactory;
+use FishyBoat21\ExtendOrm\ExtendORMException;
 use PDO;
 use PDOException;
 
 class QueryBuilder2 implements IQueryBuilder2 {
     private array $QueryStringBlock;
     private PDO $db;
+    private Dialect $Dialect;
 
-    public function __construct(PDO $db)
+    public function __construct(PDO $db, ?Dialect $dialect = null)
     {
         $this->db = $db;
+        $this->Dialect = $dialect ?? DialectFactory::forConnection($db);
         $this->reset();
+    }
+
+    /**
+     * A fresh builder over the same connection and dialect.
+     *
+     * Use this instead of reusing one builder for interleaved work: the builder
+     * holds the half-built statement, so reusing it mid-chain discards it.
+     */
+    public function newQuery(): self
+    {
+        return new self($this->db, $this->Dialect);
     }
 
     /**
@@ -24,12 +40,31 @@ class QueryBuilder2 implements IQueryBuilder2 {
             'table'  => '',
             'columns'=> '',
             'values' => [],      // For INSERT/UPDATE
-            'wheres' => [],      // Array of condition strings
-            'params' => [],      // Bind parameters for PDO
+            'wheres' => [],      // list of ['boolean' => 'AND'|'OR', 'sql' => string, 'params' => array]
+            'params' => [],      // Bind parameters for the statement body
             'limit' => null,
             'offset' => null,
             'sorts' => []       // Array of sort strings
         ];
+    }
+
+    /**
+     * Quotes a comma-separated identifier list ("id, username, created_at").
+     */
+    private function quoteList(string $identifiers): string
+    {
+        $quoted = [];
+        foreach (explode(',', $identifiers) as $identifier) {
+            $identifier = trim($identifier);
+            if ($identifier === '') {
+                continue;
+            }
+            $quoted[] = $this->Dialect->quoteIdentifier($identifier);
+        }
+        if ($quoted === []) {
+            throw new ExtendORMException("Cannot build a query with no columns.");
+        }
+        return implode(', ', $quoted);
     }
 
     /**
@@ -53,15 +88,80 @@ class QueryBuilder2 implements IQueryBuilder2 {
     }
 
     /**
-     * Add a WHERE clause.
-     * usage: ->where('age', '>', 18)
+     * Add a WHERE clause joined with AND.
+     * usage: ->where('age', QueryBuilderOperator::MoreThan, 18)
      */
     public function where(string $column, QueryBuilderOperator $operator, mixed $value): self
     {
-        // specific placeholder to handle multiple wheres safely
-        $this->QueryStringBlock['wheres'][] = "$column $operator->value ?";
-        $this->QueryStringBlock['params'][] = $value;
+        return $this->addWhere('AND', $column, $operator, $value);
+    }
+
+    /**
+     * Add a WHERE clause joined with OR.
+     *
+     * Note that SQL precedence applies: `a AND b OR c` groups as `(a AND b) OR c`.
+     */
+    public function orWhere(string $column, QueryBuilderOperator $operator, mixed $value): self
+    {
+        return $this->addWhere('OR', $column, $operator, $value);
+    }
+
+    private function addWhere(string $boolean, string $column, QueryBuilderOperator $operator, mixed $value): self
+    {
+        [$sql, $params] = $this->compileCondition($column, $operator, $value);
+        $this->QueryStringBlock['wheres'][] = [
+            'boolean' => $boolean,
+            'sql' => $sql,
+            'params' => $params,
+        ];
         return $this;
+    }
+
+    /**
+     * Turns one (column, operator, value) triple into SQL plus bind parameters.
+     *
+     * @return array{0: string, 1: array}
+     */
+    private function compileCondition(string $column, QueryBuilderOperator $operator, mixed $value): array
+    {
+        $quoted = $this->Dialect->quoteIdentifier($column);
+
+        if ($operator === QueryBuilderOperator::IsNull || $operator === QueryBuilderOperator::IsNotNull) {
+            return ["$quoted $operator->value", []];
+        }
+
+        if ($operator === QueryBuilderOperator::Is) {
+            if ($value !== null) {
+                throw new ExtendORMException(
+                    "QueryBuilderOperator::Is only supports NULL. Use IsNull / IsNotNull for NULL checks, " .
+                    "or a comparison operator such as Equals for values."
+                );
+            }
+            return ["$quoted IS NULL", []];
+        }
+
+        if ($operator === QueryBuilderOperator::In || $operator === QueryBuilderOperator::NotIn) {
+            if (!is_array($value) || $value === []) {
+                throw new ExtendORMException(
+                    "QueryBuilderOperator::{$operator->name} expects a non-empty array of values."
+                );
+            }
+            $values = array_values($value);
+            $placeholders = implode(', ', array_fill(0, count($values), '?'));
+            return ["$quoted $operator->value ($placeholders)", $values];
+        }
+
+        if ($operator === QueryBuilderOperator::Between || $operator === QueryBuilderOperator::NotBetween) {
+            if (!is_array($value) || count($value) !== 2) {
+                throw new ExtendORMException(
+                    "QueryBuilderOperator::{$operator->name} expects a two-element array: [minimum, maximum]."
+                );
+            }
+            $values = array_values($value);
+            return ["$quoted $operator->value ? AND ?", $values];
+        }
+
+        return ["$quoted $operator->value ?", [$value]];
     }
 
     /**
@@ -76,20 +176,18 @@ class QueryBuilder2 implements IQueryBuilder2 {
 
         $columns = array_keys($data);
         $placeholders = array_fill(0, count($columns), '?');
-        
+
         $this->QueryStringBlock['columns'] = implode(', ', $columns);
         $this->QueryStringBlock['values'] = implode(', ', $placeholders);
         $this->QueryStringBlock['params'] = array_values($data);
 
-        $stmt = $this->execute();
+        $this->execute();
         return (int)$this->db->lastInsertId();
     }
 
     /**
      * Prepare an UPDATE statement.
-     * Call ->where() after this, then ->exec() or implement immediate execution logic.
-     * Here we prepare the block, but return self to allow chaining ->where().
-     * To execute, we will need a finish method.
+     * Usage: $qb->update(...)->where(...)->exec();
      */
     public function update(string $table, array $data): self
     {
@@ -99,24 +197,11 @@ class QueryBuilder2 implements IQueryBuilder2 {
 
         $sets = [];
         foreach ($data as $column => $value) {
-            $sets[] = "$column = ?";
+            $sets[] = $this->Dialect->quoteIdentifier($column) . " = ?";
             $this->QueryStringBlock['params'][] = $value;
         }
         $this->QueryStringBlock['columns'] = implode(', ', $sets);
 
-        // We return an object that can execute, but since this specific method signature
-        // usually implies immediate execution in simple builders, we need to handle the WHERE clause.
-        // However, standard builders separate `update` and `where`. 
-        // *Workaround:* If you need immediate execution without where, we run it here.
-        // But to support WHERE, we usually return $this and call a final 'execute' method.
-        // For this specific request, I will return 0 here and assume the user calls a finalize method 
-        // OR I will interpret this request as "Start the update chain". 
-        
-        // *Correction based on "Execute Directly" requirement:* // Since `update` usually requires a `where`, we cannot execute immediately inside this function 
-        // unless we pass conditions into it. 
-        // To keep it simple: This creates the update block. You must call `exec()` or `get()` logic to run it.
-        // But strict CRUD methods usually return result. I will create a helper `exec()` method.
-        
         return $this; // Usage: $qb->update(...)->where(...)->exec();
     }
 
@@ -169,58 +254,68 @@ class QueryBuilder2 implements IQueryBuilder2 {
         $sql = '';
         $type = $this->QueryStringBlock['type'];
         $table = $this->QueryStringBlock['table'];
-        $wheres = $this->QueryStringBlock['wheres'];
-        $sort = $this->QueryStringBlock['sorts'];
+        $conditions = $this->QueryStringBlock['wheres'];
+        $sorts = $this->QueryStringBlock['sorts'];
         $limit = $this->QueryStringBlock['limit'];
         $offset = $this->QueryStringBlock['offset'];
+
+        // Parameters queued by INSERT values / UPDATE assignments.
+        $params = $this->QueryStringBlock['params'];
+
         // Build SQL String
         switch ($type) {
             case 'SELECT':
-                $cols = $this->QueryStringBlock['columns'];
-                $sql = "SELECT $cols FROM $table";
+                $sql = "SELECT " . $this->quoteList($this->QueryStringBlock['columns']) . " FROM " . $this->Dialect->quoteIdentifier($table);
                 break;
             case 'INSERT':
-                $cols = $this->QueryStringBlock['columns'];
+                $cols = $this->quoteList($this->QueryStringBlock['columns']);
                 $vals = $this->QueryStringBlock['values'];
-                $sql = "INSERT INTO $table ($cols) VALUES ($vals)";
+                $sql = "INSERT INTO " . $this->Dialect->quoteIdentifier($table) . " ($cols) VALUES ($vals)";
                 break;
             case 'UPDATE':
                 $cols = $this->QueryStringBlock['columns']; // These are actually "col = ?" strings
-                $sql = "UPDATE $table SET $cols";
+                $sql = "UPDATE " . $this->Dialect->quoteIdentifier($table) . " SET $cols";
                 break;
             case 'DELETE':
-                $sql = "DELETE FROM $table";
+                $sql = "DELETE FROM " . $this->Dialect->quoteIdentifier($table);
                 break;
             default:
-                throw new PDOException("Invalid Query Type");
+                throw new ExtendORMException("Invalid Query Type");
         }
 
-        // Append WHERE clauses (if any)
-        if (!empty($wheres) && $type !== 'INSERT') {
-            $sql .= " WHERE " . implode(' AND ', $wheres);
-        }
-        // Append paging
-        if($type === 'SELECT'){
-            if (!empty($sort)) {
-                $sql .= " ORDER BY " . implode(', ', $sort);
-            }
-            if($limit !== null){
-                if ($offset !== null && $offset > 0) {
-                    $sql .= " LIMIT $limit OFFSET $offset";
-                } else {
-                    $sql .= " LIMIT $limit";
+        // Append WHERE clauses (if any). The first condition never carries a connector.
+        if ($conditions !== [] && $type !== 'INSERT') {
+            $parts = [];
+            foreach ($conditions as $index => $node) {
+                $parts[] = ($index === 0 ? '' : $node['boolean'] . ' ') . $node['sql'];
+                foreach ($node['params'] as $param) {
+                    $params[] = $param;
                 }
             }
+            $sql .= " WHERE " . implode(' ', $parts);
         }
+
+        // Append ordering and paging
+        if($type === 'SELECT'){
+            if ($sorts !== []) {
+                $sql .= " ORDER BY " . implode(', ', $sorts);
+            }
+            $sql .= $this->Dialect->limitClause($limit, $offset);
+        }
+
         // Prepare and Execute
         try {
             $stmt = $this->db->prepare($sql);
-            $stmt->execute($this->QueryStringBlock['params']);
+            $stmt->execute($params);
             return $stmt;
         } catch (PDOException $e) {
-            throw new PDOException("Query Failed: " . $e->getMessage() . " | SQL: " . $sql);
+            // Log the failing statement server-side; never embed the SQL text in
+            // the exception, which callers may render to end users.
+            error_log(sprintf('ExtendOrm query failed: %s | SQL: %s', $e->getMessage(), $sql));
+            throw $e;
         }
     }
+
     /**
      * Set limit and offset for paging
      */
@@ -240,7 +335,13 @@ class QueryBuilder2 implements IQueryBuilder2 {
         if (!isset($this->QueryStringBlock['sorts'])) {
             $this->QueryStringBlock['sorts'] = [];
         }
-        $this->QueryStringBlock['sorts'][] = "$field $direction->value";
+        $this->QueryStringBlock['sorts'][] = $this->Dialect->quoteIdentifier($field) . " $direction->value";
         return $this;
+    }
+
+    /** The dialect this builder renders with. */
+    public function dialect(): Dialect
+    {
+        return $this->Dialect;
     }
 }
