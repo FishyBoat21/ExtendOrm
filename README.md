@@ -917,9 +917,11 @@ composer test
 ```
 
 The database named in the DSN must already exist — the suite creates and resets
-its own tables inside it. CI runs the SQLite matrix on PHP 8.1–8.4 plus a
-MariaDB job, so both supported drivers are covered — see
-[.github/workflows/ci.yml](.github/workflows/ci.yml).
+its own tables inside it. Set `EXTENDORM_TEST_EXPECT_DRIVER=mysql` as well and a
+run that silently fell back to SQLite fails instead of passing green.
+
+CI runs the SQLite matrix on PHP 8.1–8.4 plus a MariaDB job, so both supported
+drivers are covered — see [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ---
 

@@ -88,6 +88,25 @@ final class DialectTest extends TestCase
         $this->assertSame($this->driver(), $this->queryBuilder()->dialect()->name());
     }
 
+    /**
+     * Guard against a CI job that means to exercise MySQL silently falling back
+     * to the default SQLite connection: a green run would otherwise prove
+     * nothing about the driver it was supposed to test.
+     */
+    public function testRunsAgainstTheExpectedDriverWhenOneIsDeclared(): void
+    {
+        $expected = getenv('EXTENDORM_TEST_EXPECT_DRIVER');
+        if (!is_string($expected) || $expected === '') {
+            $this->markTestSkipped('EXTENDORM_TEST_EXPECT_DRIVER is not set.');
+        }
+
+        $this->assertSame(
+            $expected,
+            $this->driver(),
+            'The suite connected to the wrong driver, so this run does not test what it claims to.'
+        );
+    }
+
     public function testBuilderAcceptsAnExplicitDialect(): void
     {
         $builder = new QueryBuilder2($this->pdo, new MySqlDialect());

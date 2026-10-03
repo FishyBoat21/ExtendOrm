@@ -82,3 +82,6 @@ jobs:
           EXTENDORM_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=extendorm_test;charset=utf8mb4'
           EXTENDORM_TEST_USER: root
           EXTENDORM_TEST_PASSWORD: ''
+          # Fails the job rather than silently re-running on SQLite if the DSN
+          # above does not take effect.
+          EXTENDORM_TEST_EXPECT_DRIVER: mysql
