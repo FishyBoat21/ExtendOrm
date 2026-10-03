@@ -42,11 +42,22 @@ jobs:
         if: matrix.php == '8.4'
         run: composer analyse
 
-  # MySQL/MariaDB is the driver the library actually targets, so "supported"
+  # MySQL/MariaDB is the driver this library actually targets, so "supported"
   # has to mean something. The same suite runs here against a real server.
+  #
+  # The env lives at job level so every step shares it, and the first step
+  # fails loudly if it is missing. That matters: without it, a dropped or
+  # misspelled variable would make the suite fall back to its SQLite default
+  # and still report success, so a green job would prove nothing about MySQL.
   mariadb:
     name: MariaDB
     runs-on: ubuntu-latest
+
+    env:
+      EXTENDORM_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=extendorm_test;charset=utf8mb4'
+      EXTENDORM_TEST_USER: root
+      EXTENDORM_TEST_PASSWORD: ''
+      EXTENDORM_TEST_EXPECT_DRIVER: mysql
 
     services:
       mariadb:
@@ -73,15 +84,21 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Assert the MariaDB environment is actually wired
+        run: |
+          php -r '
+            foreach (["EXTENDORM_TEST_DSN", "EXTENDORM_TEST_EXPECT_DRIVER"] as $key) {
+                if (getenv($key) === false || getenv($key) === "") {
+                    fwrite(STDERR, "FATAL: $key is not set, so the tests would silently run on SQLite.\n");
+                    exit(1);
+                }
+            }
+            $pdo = new PDO(getenv("EXTENDORM_TEST_DSN"), getenv("EXTENDORM_TEST_USER"), getenv("EXTENDORM_TEST_PASSWORD"));
+            printf("connected: %s %s\n", $pdo->getAttribute(PDO::ATTR_DRIVER_NAME), $pdo->getAttribute(PDO::ATTR_SERVER_VERSION));
+          '
+
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
 
       - name: Run tests against MariaDB
         run: composer test
-        env:
-          EXTENDORM_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=extendorm_test;charset=utf8mb4'
-          EXTENDORM_TEST_USER: root
-          EXTENDORM_TEST_PASSWORD: ''
-          # Fails the job rather than silently re-running on SQLite if the DSN
-          # above does not take effect.
-          EXTENDORM_TEST_EXPECT_DRIVER: mysql
