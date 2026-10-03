@@ -161,6 +161,16 @@ If you hand-write raw SQL alongside the ORM, keep the following in mind. The ORM
 composer require fishyboat21/extendorm
 ```
 
+> **Note**: every release so far is a pre-release (`2.0.0-alpha.x`), which
+> Composer's default stability will refuse. Either allow pre-releases for this
+> package:
+>
+> ```bash
+> composer require fishyboat21/extendorm:^2.0@alpha
+> ```
+>
+> or set `"minimum-stability": "alpha"` in your own `composer.json`.
+
 ### Manual Installation
 
 1. Clone the repository:
